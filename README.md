@@ -2,7 +2,7 @@
 
 Ein leichtes, statisches Filament-Inventar für den Bambu Lab P2S Combo. HTML, CSS und Vanilla JavaScript, ohne Backend, API-Keys, Frameworks, npm-Abhängigkeiten oder Build-Schritt.
 
-## Version 1
+## Version 1.1
 
 - Helles, responsives Dashboard mit farbigen CSS-Spulen, Instrument Sans und IBM Plex Mono.
 - **16 Ausgangsrollen / 16 kg**: 12 PLA, 4 PETG; Purple als Refill, Navy Blue als Geschenk (0 €). Alle Rollen starten bei 1.000 g und Status „Neu“.
@@ -13,6 +13,7 @@ Ein leichtes, statisches Filament-Inventar für den Bambu Lab P2S Combo. HTML, C
 - Grammwerte mit bis zu zwei Dezimalstellen, Status Neu/Angebrochen/Leer, Kaufdatum, Preis und Notizen.
 - Suche nach englischem/deutschem Katalognamen, Material oder Farbcode; Materialgruppe, Untertyp, Farbfamilie und Status als Filter; vier Sortierungen.
 - Statistiken zu Gewicht, Rollen, Materialgruppen/-untertypen, Farben sowie den letzten 30 Verbrauchsbuchungen.
+- Wunschliste mit Farbcode-Erkennung, Menge, Notizen und Übernahme gekaufter Rollen ins Inventar.
 - Validierter JSON-Import mit Vorschau, Ergänzen/Ersetzen, Export und Rückkehr zum Stand vor dem letzten Import.
 
 ## Sofort lokal starten
@@ -55,6 +56,12 @@ Nach Änderungen passende Tests ausführen, committen und nach `main` pushen. Ke
 
 Bei einem unbekannten Code die Felder manuell füllen. Bei mehreren Katalogtreffern einen auswählen. HEX-Werte können sechs oder acht Stellen enthalten, mehrere Farben werden durch Komma getrennt. Beim Ändern eines Farbcodes werden alte Farbangaben geleert, um versehentliche falsche Zuordnungen zu verhindern.
 
+### Wunschliste
+
+Unter **Wunschliste → Wunsch hinzufügen** einen Farbcode erkennen oder manuelle Angaben eingeben. Gewünschte Menge (1–99), Spule/Refill und Notizen speichern. Wünsche zählen noch nicht zum Bestand. Über **⋯** lassen sie sich bearbeiten oder löschen.
+
+**1 Rolle ins Regal** öffnet die Angaben für eine gekaufte Rolle. Beim Speichern entsteht eine eigenständige Inventarrolle; die Wunschmenge sinkt gleichzeitig um eins. Der letzte erfüllte Wunsch verschwindet aus der Liste. Bestand und Wunschliste werden gemeinsam gespeichert, auch im JSON-Backup.
+
 ### Verbrauch und Bearbeitung
 
 - **− Verbrauch** auf der Karte: Grammzahl oder Vorgabe wählen, optional Projekt angeben, speichern. Das Restgewicht wird automatisch abgezogen; negative Werte oder Verbrauch über dem Bestand sind unzulässig.
@@ -84,11 +91,11 @@ Die Kennzahlen beziehen sich immer auf **alle gespeicherten Rollen inklusive Arc
 
 ### Import
 
-**Ergänzen**: Nur unbekannte Rollen-IDs hinzufügen. Existierende IDs bleiben unverändert, selbst wenn das Backup andere Gewichte enthält. Ein zweimal importiertes Backup verdoppelt deshalb keine Rollen. Unabhängig angelegte reale Rollen derselben Farbe haben unterschiedliche IDs und bleiben erhalten.
+**Ergänzen**: Nur unbekannte Rollen- und Wunsch-IDs hinzufügen. Existierende IDs bleiben unverändert, selbst wenn das Backup andere Gewichte enthält. Ein zweimal importiertes Backup verdoppelt deshalb keine Rollen. Unabhängig angelegte reale Rollen derselben Farbe haben unterschiedliche IDs und bleiben erhalten.
 
-**Ersetzen**: Den gesamten Bestand durch den Backup-Stand ersetzen, mit zweiter Bestätigung. Für den Wechsel auf ein anderes Gerät meistens sinnvoll, weil dort bereits die 16 Startrollen vorhanden sein können. Vorher wird der bisherige Stand lokal gesichert. Über **Stand vor letztem Import wiederherstellen** lässt er sich erneut als Ersetzungsimport prüfen und zurückholen. Auch eine Wiederherstellung legt den vorherigen Stand ab.
+**Ersetzen**: Den gesamten Bestand und die Wunschliste durch den Backup-Stand ersetzen, mit zweiter Bestätigung. Für den Wechsel auf ein anderes Gerät meistens sinnvoll, weil dort bereits die 16 Startrollen vorhanden sein können. Vorher wird der bisherige Stand lokal gesichert. Über **Stand vor letztem Import wiederherstellen** lässt er sich erneut als Ersetzungsimport prüfen und zurückholen. Auch eine Wiederherstellung legt den vorherigen Stand ab.
 
-Schema `app: "filament-shelf"`, `version: 1`; maximal 5 MB und 5.000 Rollen. Validiert werden unter anderem IDs, Dubletten-IDs, Gewicht/Status, Farbcode, HEX, Datum, Preise und Verbrauchseinträge. Ungültige Dateien ändern den Bestand nicht. Ein gültiges Backup mit `rolls: []` ist zulässig. Unbekannte Zusatzfelder werden verworfen. Import auch durch Einfügen von JSON möglich.
+Schema `app: "filament-shelf"`, `version: 2`; maximal 5 MB, 5.000 Rollen und 5.000 Wünsche. Alte Backups und gespeicherte Daten mit Version 1 werden ohne erneuten Startimport übernommen. Beim Ergänzen eines alten Backups bleiben vorhandene Wünsche erhalten; beim Ersetzen wird dessen fehlende Wunschliste als leer übernommen (mit Warnung). Der localStorage-Schlüssel bleibt absichtlich unverändert. Validiert werden unter anderem IDs, Dubletten-IDs, Gewicht/Status, Farbcode, HEX, Datum, Preise und Verbrauchseinträge. Ungültige Dateien ändern den Bestand nicht. Ein gültiges Backup mit `rolls: []` ist zulässig. Unbekannte Zusatzfelder werden verworfen. Import auch durch Einfügen von JSON möglich.
 
 ## Architektur – spätere Synchronisierung
 
@@ -100,11 +107,13 @@ Schema `app: "filament-shelf"`, `version: 1`; maximal 5 MB und 5.000 Rollen. Val
 | `js/storage.js` | Asynchroner Repository-Adapter für localStorage |
 | `js/catalog-data.js` | Kompakter lokaler Katalog |
 | `js/seed.js` | Verlässlicher Ausgangsbestand und Katalogfallback |
-| `tests/core.test.js` | Automatisierte Tests ohne Zusatzpakete |
+| `tests/*.test.js` | Automatisierte Tests ohne Zusatzpakete |
 | `data/bambu-source.json` | Originaldaten für Nachvollziehbarkeit |
 | `scripts/update-catalog.mjs` | Optionales manuelles Katalog-Update |
 
 Die Oberfläche speichert über `repository.load()`, `save()`, `recovery()` und `recover()`, die Fachlogik bleibt von localStorage unabhängig. Für Firestore kann später ein zweiter Adapter mit denselben Rollen-IDs und Schemafeldern ergänzt werden. Authentifizierung, Konfliktlösung, Security Rules und Sync-Status müssten dann bewusst hinzugefügt werden. **Firebase ist jetzt nicht eingebunden.**
+
+Für gemeinsamen Bestand auf mehreren Geräten ist der nächste Schritt Firestore mit Google-Anmeldung: Alle Geräte verwenden dasselbe Konto; Security Rules beschränken Lesen und Schreiben auf dessen Nutzer-ID. Der bestehende Browserbestand wird einmal ausdrücklich als Ausgangsstand übernommen, weitere Geräte laden den Cloud-Bestand statt erneut Startrollen anzulegen. Rollen und Wünsche bekommen getrennte Datensätze mit stabilen IDs; konkurrierende Änderungen und die Übernahme aus der Wunschliste müssen transaktional verarbeitet werden. Dafür werden ein Firebase-Projekt, aktiviertes Firestore/Google-Login und die öffentliche Web-App-Konfiguration benötigt. Keine Admin-Schlüssel oder Passwörter gehören ins Repository. Die Website kann weiter auf GitHub Pages liegen.
 
 Benutzertexte werden mit `textContent` bzw. Formularwerten ausgegeben, niemals als HTML ausgewertet. Dynamische Farben werden streng validiert. Kein `eval`, keine Secrets, keine Remote-Katalogabfrage beim Start.
 

@@ -1,5 +1,5 @@
 export const APP = 'filament-shelf';
-export const VERSION = 1;
+export const VERSION = 2;
 export const MAX_ROLLS = 5000;
 export const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
 export const now = () => new Date().toISOString();
@@ -101,14 +101,37 @@ export function consume(roll, grams, note = '') {
   const remainingWeight = round(roll.remainingWeight - grams);
   return validateRoll({ ...roll, remainingWeight, status: remainingWeight === 0 ? 'empty' : 'opened', updatedAt: now(), usage: [...roll.usage, { id: uid(), grams: round(grams), date: now(), note }] });
 }
-export function createState(rolls) { return { app: APP, version: VERSION, revision: 0, updatedAt: now(), rolls }; }
+export function validateWish(input) {
+  if (!object(input)) fail('Ungültiger Wunsch.');
+  if (!Number.isInteger(input.quantity) || input.quantity < 1 || input.quantity > 99) fail('Gewünschte Menge muss zwischen 1 und 99 liegen.');
+  if (!['spool','refill'].includes(input.kind)) fail('Typ muss Spule oder Refill sein.');
+  if (!Array.isArray(input.colors) || !input.colors.length || input.colors.length > 16) fail('Ungültige Farben.');
+  return { id: string(input.id, 'Wunsch-ID', 100), manufacturer: string(input.manufacturer, 'Hersteller'), material: string(input.material, 'Material'), colorName: string(input.colorName, 'Farbname'), colorCode: normalizeCode(input.colorCode), colors: input.colors.map(normalizeHex), kind: input.kind, initialWeight: number(input.initialWeight, 'Gewicht je Rolle', .01, 100000), quantity: input.quantity, notes: string(input.notes, 'Notizen', 2000, true), createdAt: timestamp(input.createdAt), updatedAt: timestamp(input.updatedAt) };
+}
+export function createWish(fields, id = uid()) {
+  const date = now();
+  return validateWish({ manufacturer: 'Bambu Lab', kind: 'spool', initialWeight: 1000, quantity: 1, notes: '', createdAt: date, updatedAt: date, ...fields, id });
+}
+// One purchase changes stock and wishlist together in one repository write.
+export function purchaseWish(state, wishId, rollFields) {
+  const wish = state.wishlist.find(w => w.id === wishId);
+  if (!wish) fail('Dieser Wunsch wurde bereits übernommen oder entfernt.');
+  const roll = createRoll(rollFields);
+  const wishlist = state.wishlist.flatMap(w => w.id !== wishId ? [w] : w.quantity > 1 ? [{ ...w, quantity: w.quantity - 1, updatedAt: now() }] : []);
+  return validateState({ ...state, rolls: [...state.rolls, roll], wishlist });
+}
+export function createState(rolls) { return { app: APP, version: VERSION, revision: 0, updatedAt: now(), rolls, wishlist: [] }; }
 export function validateState(input) {
-  if (!object(input) || input.app !== APP || input.version !== VERSION) fail('Kein unterstütztes Filament-Shelf-Backup (Version 1).');
+  if (!object(input) || input.app !== APP || ![1, VERSION].includes(input.version)) fail('Kein unterstütztes Filament-Shelf-Backup (Version 1 oder 2).');
   if (!Number.isSafeInteger(input.revision) || input.revision < 0) fail('Ungültige Datenversion.');
   if (!Array.isArray(input.rolls) || input.rolls.length > MAX_ROLLS) fail('Ungültige Rollenliste (max. 5.000).');
   const ids = new Set();
   const rolls = input.rolls.map(raw => { const roll = validateRoll(raw); if (ids.has(roll.id)) fail('Doppelte Rollen-ID im Backup. Import abgebrochen.'); ids.add(roll.id); return roll; });
-  return { app: APP, version: VERSION, revision: input.revision, updatedAt: timestamp(input.updatedAt), rolls };
+  const rawWishes = input.version === 1 && input.wishlist === undefined ? [] : input.wishlist;
+  if (!Array.isArray(rawWishes) || rawWishes.length > MAX_ROLLS) fail('Ungültige Wunschliste (max. 5.000 Einträge).');
+  const wishIds = new Set();
+  const wishlist = rawWishes.map(raw => { const wish = validateWish(raw); if (wishIds.has(wish.id)) fail('Doppelte Wunsch-ID im Backup.'); wishIds.add(wish.id); return wish; });
+  return { app: APP, version: VERSION, revision: input.revision, updatedAt: timestamp(input.updatedAt), rolls, wishlist };
 }
 export function parseImport(text) {
   if (typeof text !== 'string' || new TextEncoder().encode(text).length > MAX_IMPORT_BYTES) fail('Datei ist zu groß (max. 5 MB).');
@@ -123,7 +146,11 @@ export function planImport(current, incoming, mode) {
   const duplicates = validated.rolls.filter(r => ids.has(r.id)).length;
   const rolls = mode === 'merge' ? [...current.rolls, ...validated.rolls.filter(r => !ids.has(r.id))] : validated.rolls;
   if (rolls.length > MAX_ROLLS) fail('Der Import würde 5.000 Rollen überschreiten.');
-  return { rolls, duplicates, added: validated.rolls.length - duplicates, total: rolls.length };
+  const wishIds = new Set((current.wishlist || []).map(w => w.id));
+  const wishDuplicates = validated.wishlist.filter(w => wishIds.has(w.id)).length;
+  const wishlist = mode === 'merge' ? [...(current.wishlist || []), ...validated.wishlist.filter(w => !wishIds.has(w.id))] : validated.wishlist;
+  if (wishlist.length > MAX_ROLLS) fail('Der Import würde 5.000 Wünsche überschreiten.');
+  return { rolls, wishlist, duplicates, added: validated.rolls.length - duplicates, total: rolls.length, wishDuplicates, wishAdded: validated.wishlist.length - wishDuplicates };
 }
 export function stats(rolls) {
   const byMaterial = new Map(), byFamily = new Map(), byColor = new Map();

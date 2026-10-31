@@ -1,5 +1,5 @@
 import { catalogData } from './catalog-data.js';
-import { normalizeCatalog, findByCode, normalizeHex, createRoll, validateRoll, createState, consume, stats, family, colorFamily, parseImport, planImport, now, round, MAX_IMPORT_BYTES } from './core.js';
+import { normalizeCatalog, findByCode, normalizeHex, createRoll, validateRoll, createState, consume, stats, family, colorFamily, parseImport, planImport, now, round, MAX_IMPORT_BYTES, createWish, validateWish, purchaseWish } from './core.js';
 import { createSeed, seedCatalog } from './seed.js';
 import { LocalStorageRepository, STORAGE_KEY } from './storage.js';
 const $ = selector => document.querySelector(selector);
@@ -12,6 +12,7 @@ const g = grams => `${nf.format(grams)} g`;
 const names = { new:'Neu', opened:'Angebrochen', empty:'Leer' };
 let state = null, repository, selectedFamily = 'all', editId = null, consumeId = null, pendingImport = null, toastTimer, busy = false;
 let importedAtRaw = null, damagedRaw = null;
+let activeView = 'inventory', formMode = 'stock', purchaseId = null;
 function el(tag, className, text) { const node = document.createElement(tag); if (className) node.className = className; if (text !== undefined) node.textContent = text; return node; }
 function button(label, className, action) { const node = el('button', className, label); node.type = 'button'; node.addEventListener('click', action); return node; }
 function background(colors) { return colors.length === 1 ? colors[0] : `linear-gradient(125deg, ${colors.join(',')})`; }
@@ -19,13 +20,13 @@ function toast(message, error = false) { clearTimeout(toastTimer); $('#toast').t
 function message(error) { if (error?.name === 'QuotaExceededError') return 'Der Browserspeicher ist voll. Die Änderung wurde nicht gespeichert. Bitte zuerst ein Backup exportieren.'; if (error?.name === 'SecurityError') return 'Dieser Browser erlaubt hier keine lokale Speicherung. Bitte einen normalen Browser-Tab verwenden.'; return error.message || String(error); }
 function fatal(error) {
   $('#fatal').hidden = false; $('#fatal-message').textContent = message(error);
-  $('#add-open').disabled = true; $('#quick-form button').disabled = true;
+  $('#add-open').disabled = true; $('#quick-form button').disabled = true; $('#wish-add').disabled = true;
   $('#save-state').textContent = 'Speichern nicht verfügbar';
 }
-async function commit(rolls, options = {}) {
+async function commit(rolls, options = {}, wishlist = state?.wishlist) {
   if (!state || busy) return false;
   busy = true;
-  try { const next = await repository.save({ ...state, rolls }, options); state = next; render(); return true; }
+  try { const next = await repository.save({ ...state, rolls, wishlist }, options); state = next; render(); return true; }
   catch (error) { throw new Error(message(error)); }
   finally { busy = false; }
 }
@@ -60,7 +61,7 @@ function render() {
   options('#subtype',[...new Set(state.rolls.filter(r => selectedFamily === 'all' || family(r.material) === selectedFamily).map(r => r.material))].sort(),'Alle Untertypen');
   options('#color-filter',[...new Set(state.rolls.flatMap(r => r.colors.map(colorFamily)))].sort(),'Alle Farben');
   $('#save-state').replaceChildren(el('span','dot'), document.createTextNode('Lokal gespeichert'));
-  renderGrid(); renderStats(s);
+  renderGrid(); renderStats(s); renderWishlist();
 }
 function filteredRolls() {
   const query = $('#search').value.trim().toLocaleLowerCase('de');
@@ -86,15 +87,19 @@ function renderGrid() {
   rolls.forEach(r => fragment.append(rollCard(r)));
   $('#grid').replaceChildren(fragment);
 }
-function rollCard(r) {
-  const card = el('article',`card${r.kind === 'refill' ? ' refill' : ''}`); card.dataset.id = r.id;
+function filamentStage(r,onEdit) {
   const stage = el('div','color-stage');
   const rgb = r.colors[0].slice(1,7).match(/../g).map(v => parseInt(v,16));
   stage.style.setProperty('--stage',`rgb(${rgb.map(c => Math.round(c*.12+255*.88)).join(',')})`);
   const badge = el('span','type-badge',r.kind === 'refill' ? 'REFILL' : 'SPULE');
-  const edit = button('⋯','edit-button',() => openRoll(r)); edit.setAttribute('aria-label',`${r.colorName} ${r.colorCode} bearbeiten`);
+  const edit = button('⋯','edit-button',onEdit); edit.setAttribute('aria-label',`${r.colorName} ${r.colorCode} bearbeiten`);
   const spool = el('div','spool'); spool.setAttribute('aria-hidden','true'); spool.style.setProperty('--filament',background(r.colors)); spool.append(el('span','spool-label','BAMBU LAB'));
   stage.append(badge,edit,spool);
+  return stage;
+}
+function rollCard(r) {
+  const card = el('article',`card${r.kind === 'refill' ? ' refill' : ''}`); card.dataset.id = r.id;
+  const stage = filamentStage(r,() => openRoll(r));
   const body = el('div','card-body'), meta = el('div','card-meta'); meta.append(el('span','material-label',r.material),el('span','',r.colorCode));
   const title = el('h3','',r.colorName), weightRow = el('div','weight-row'), weight = el('span','weight',g(r.remainingWeight)); weight.append(el('small','',`/ ${g(r.initialWeight)}`));
   const status = el('span',`status ${r.status}`,r.archived ? 'Archiv' : names[r.status]);
@@ -108,6 +113,30 @@ function rollCard(r) {
   else if (r.remainingWeight > 0) actions.append(button('− Verbrauch','text-button',() => openConsume(r)));
   else actions.append(button('Archivieren ↗','text-button',() => archive(r,true)));
   footer.append(note,actions); card.append(stage,body,footer); return card;
+}
+function renderWishlist() {
+  if (!state) return;
+  const total = state.wishlist.reduce((n,w) => n + w.quantity,0);
+  $('#wishlist-count').textContent = state.wishlist.length;
+  $('#wishlist-summary').textContent = `${state.wishlist.length} ${state.wishlist.length === 1 ? 'Wunsch' : 'Wünsche'} · ${total} ${total === 1 ? 'gewünschte Rolle' : 'gewünschte Rollen'}. Noch nicht im Bestand enthalten.`;
+  const query = $('#wish-search').value.trim().toLocaleLowerCase('de');
+  const wishes = state.wishlist.filter(w => `${w.colorName} ${w.material} ${w.colorCode}`.toLocaleLowerCase('de').includes(query)).sort((a,b) => b.createdAt.localeCompare(a.createdAt));
+  $('#wishlist-empty').hidden = wishes.length > 0;
+  $('#wishlist-empty h2').textContent = query ? 'Kein passender Wunsch gefunden.' : 'Platz für deine nächste Idee.';
+  $('#wishlist-grid').replaceChildren(...wishes.map(w => {
+    const card = el('article',`card wish-card${w.kind === 'refill' ? ' refill' : ''}`); card.dataset.id = w.id;
+    const body = el('div','card-body'), meta = el('div','card-meta');
+    meta.append(el('span','material-label',w.material),el('span','',w.colorCode));
+    body.append(meta,el('h3','',w.colorName),el('p','wish-quantity',`${w.quantity} × ${g(w.initialWeight)} · ${w.kind === 'refill' ? 'Refill' : 'Spule'}`));
+    if(w.notes) body.append(el('p','wish-note',w.notes));
+    const footer = el('div','card-footer'); footer.append(button('1 Rolle ins Regal ↗','text-button',() => openRoll(null,'','stock',w)));
+    card.append(filamentStage(w,() => openRoll(w,'','wish')),body,footer); return card;
+  }));
+}
+async function removeWish(wish) {
+  if (!await ask('Wunsch entfernen?',`${wish.colorName} von der Wunschliste entfernen? Dein Inventar bleibt unverändert.`,'Entfernen',true)) return;
+  try { if (await commit(state.rolls,{},state.wishlist.filter(w => w.id !== wish.id))) { $('#roll-dialog').close(); toast('Wunsch entfernt.'); } }
+  catch(error) { $('#roll-error').textContent = message(error); }
 }
 function statRow(label,value) { const node = el('div','stat-row'); node.append(el('span','',label),el('strong','',value)); return node; }
 function renderStats(s) {
@@ -133,8 +162,11 @@ function renderFamily() { $$('#family-filter button').forEach(b => { b.classList
 $('#family-filter').addEventListener('click',event => { const b = event.target.closest('[data-family]'); if (!b) return; selectedFamily = b.dataset.family; $('#subtype').value = 'all'; renderFamily(); render(); });
 ['#search','#subtype','#color-filter','#status-filter','#sort'].forEach(s => $(s).addEventListener(s === '#search' ? 'input' : 'change',renderGrid));
 $('#clear-filters').addEventListener('click',resetFilters);
-function view(name) { ['inventory','stats'].forEach(key => { $(`#${key}-panel`).hidden = key !== name; $(`#${key}-tab`).classList.toggle('active',key === name); $(`#${key}-tab`).setAttribute('aria-pressed',String(key === name)); }); }
+function view(name) { activeView = name; $('#add-open').textContent = name === 'wishlist' ? '＋ Wunsch hinzufügen' : '＋ Filament hinzufügen'; $('#quick-title').textContent = name === 'wishlist' ? 'Neue Farbe auf der Wunschliste?' : 'Neue Farbe im Regal?'; ['inventory','wishlist','stats'].forEach(key => { $(`#${key}-panel`).hidden = key !== name; $(`#${key}-tab`).classList.toggle('active',key === name); $(`#${key}-tab`).setAttribute('aria-pressed',String(key === name)); }); }
 $('#inventory-tab').addEventListener('click',() => view('inventory'));
+$('#wishlist-tab').addEventListener('click',() => view('wishlist'));
+$('#wish-add').addEventListener('click',() => openRoll(null,'','wish'));
+$('#wish-search').addEventListener('input',renderWishlist);
 $('#stats-tab').addEventListener('click',() => view('stats'));
 function preview() {
   $('#preview-name').textContent = $('#color-name').value || 'Deine nächste Farbe'; $('#preview-material').textContent = `${$('#manufacturer').value} · ${$('#material').value}`;
@@ -145,7 +177,7 @@ function lookup() {
   $('#matches').replaceChildren();
   try {
     const matches = findByCode(catalog,$('#roll-code').value);
-    const custom = (state?.rolls || []).filter(r => r.colorCode === $('#roll-code').value.trim() && !matches.some(c => c.material === r.material && c.colorName === r.colorName && c.colors.map(x => x.slice(0,7)).join() === r.colors.map(x => x.slice(0,7)).join()));
+    const custom = [...(state?.rolls || []), ...(state?.wishlist || [])].filter(r => r.colorCode === $('#roll-code').value.trim() && !matches.some(c => c.material === r.material && c.colorName === r.colorName && c.colors.map(x => x.slice(0,7)).join() === r.colors.map(x => x.slice(0,7)).join()));
     for (const r of custom) if (!matches.some(c => c.material === r.material && c.colorName === r.colorName)) matches.push({...r,source:'inventory'});
     if (!matches.length) { $('#lookup-message').textContent = 'Unbekannter Farbcode. Bitte Material, Farbname und HEX-Farbe selbst ergänzen.'; $('#material').value = ''; $('#color-name').value = ''; $('#colors').value = ''; preview(); $('#material').focus(); }
     else if (matches.length === 1) { populate(matches[0]); $('#lookup-message').textContent = matches[0].source === 'official' ? 'Erkannt im offiziellen Bambu-Studio-Katalog ✓' : 'Erkannt aus deinem Ausgangsbestand / Inventar ✓'; }
@@ -156,26 +188,33 @@ function lookup() {
     }
   } catch(error) { $('#lookup-message').textContent = message(error); }
 }
-function openRoll(roll = null, code = '') {
+function openRoll(roll = null, code = '', mode = 'stock', fromWish = null) {
   if (!state) return;
-  editId = roll?.id || null; $('#roll-form').reset(); $('#roll-error').textContent = ''; $('#matches').replaceChildren();
-  $('#roll-title').textContent = roll ? 'Rolle bearbeiten' : 'Filament hinzufügen'; $('#roll-submit').textContent = roll ? 'Änderungen speichern' : 'Rolle hinzufügen';
+  formMode = mode; purchaseId = fromWish?.id || null;
+  editId = roll?.id || null; $('#roll-form').reset();
+  $$('.stock-only').forEach(node => { node.hidden = mode === 'wish'; node.querySelectorAll('input,select').forEach(input => input.disabled = mode === 'wish'); });
+  $('#wish-quantity-label').hidden = mode !== 'wish'; $('#wish-quantity').disabled = mode !== 'wish';
+ $('#roll-error').textContent = ''; $('#matches').replaceChildren();
+  $('#roll-title').textContent = mode === 'wish' ? (roll ? 'Wunsch bearbeiten' : 'Wunsch hinzufügen') : fromWish ? 'Gekaufte Rolle übernehmen' : roll ? 'Rolle bearbeiten' : 'Filament hinzufügen';
+  $('#roll-submit').textContent = mode === 'wish' ? 'Wunsch speichern' : fromWish ? '1 Rolle ins Regal' : roll ? 'Änderungen speichern' : 'Rolle hinzufügen';
   $('#lookup-message').textContent = 'Fünf Ziffern vom Etikett – der Katalog ist lokal verfügbar.';
   $('#roll-code').value = roll?.colorCode || code;
   if (roll) {
-    populate(roll); $('#kind').value = roll.kind; $('#roll-status').value = roll.status; $('#initial').value = roll.initialWeight; $('#remaining').value = roll.remainingWeight; $('#purchase-date').value = roll.purchaseDate; $('#purchase-price').value = roll.purchasePrice ?? ''; $('#notes').value = roll.notes;
+    populate(roll); $('#kind').value = roll.kind; $('#roll-status').value = roll.status || 'new'; $('#initial').value = roll.initialWeight; $('#remaining').value = roll.remainingWeight ?? roll.initialWeight; $('#purchase-date').value = roll.purchaseDate || ''; $('#wish-quantity').value = roll.quantity || 1; $('#purchase-price').value = roll.purchasePrice ?? ''; $('#notes').value = roll.notes;
   } else { $('#colors').value = ''; preview(); }
+  if (fromWish) { populate(fromWish); $('#roll-code').value = fromWish.colorCode; $('#kind').value = fromWish.kind; $('#initial').value = fromWish.initialWeight; $('#remaining').value = fromWish.initialWeight; $('#notes').value = fromWish.notes; $('#lookup-message').textContent = 'Übernimmt genau eine Rolle. Die gewünschte Menge wird beim Speichern um 1 reduziert.'; }
   $('#edit-actions')?.remove();
   if (roll) {
     const actions = el('div','backup-actions'); actions.id = 'edit-actions';
-    actions.append(button(roll.archived ? 'Zurück ins Regal' : 'Archivieren','button secondary',() => archive(roll,!roll.archived)),button('Rolle löschen','button secondary',() => removeRoll(roll)));
+    if (mode === 'wish') actions.append(button('Wunsch entfernen','button secondary',() => removeWish(roll)));
+    else actions.append(button(roll.archived ? 'Zurück ins Regal' : 'Archivieren','button secondary',() => archive(roll,!roll.archived)),button('Rolle löschen','button secondary',() => removeRoll(roll)));
     $('#roll-error').before(actions);
   }
   $('#roll-dialog').showModal();
   if (code) lookup();
 }
-$('#add-open').addEventListener('click',() => openRoll());
-$('#quick-form').addEventListener('submit',event => { event.preventDefault(); openRoll(null,$('#quick-code').value); });
+$('#add-open').addEventListener('click',() => openRoll(null,'',activeView === 'wishlist' ? 'wish' : 'stock'));
+$('#quick-form').addEventListener('submit',event => { event.preventDefault(); openRoll(null,$('#quick-code').value,activeView === 'wishlist' ? 'wish' : 'stock'); });
 $('#lookup').addEventListener('click',lookup);
 $('#roll-code').addEventListener('input',() => { $('#lookup-message').textContent = 'Code geändert. Bitte erneut „Erkennen“ wählen oder die Angaben manuell ergänzen.'; $('#material').value = ''; $('#color-name').value = ''; $('#colors').value = ''; $('#matches').replaceChildren(); preview(); });
 $('#roll-code').addEventListener('keydown',event => { if (event.key === 'Enter') { event.preventDefault(); lookup(); } });
@@ -187,9 +226,21 @@ $('#roll-status').addEventListener('change',() => { if ($('#roll-status').value 
 $('#roll-form').addEventListener('submit',async event => {
   event.preventDefault(); if (busy) return; $('#roll-error').textContent = ''; const submit = $('#roll-submit'); submit.disabled = true;
   try {
-    const existing = editId ? state.rolls.find(r => r.id === editId) : null;
+    const existing = editId ? (formMode === 'wish' ? state.wishlist : state.rolls).find(r => r.id === editId) : null;
     if (editId && !existing) throw new Error('Diese Rolle existiert nicht mehr. Bitte den Dialog schließen.');
     const fields = { manufacturer:$('#manufacturer').value.trim(), material:$('#material').value.trim(), colorName:$('#color-name').value.trim(), colorCode:$('#roll-code').value, colors:$('#colors').value.split(',').map(c => normalizeHex(c.trim())), initialWeight:Number($('#initial').value), remainingWeight:Number($('#remaining').value), kind:$('#kind').value, status:$('#roll-status').value, purchaseDate:$('#purchase-date').value, purchasePrice:$('#purchase-price').value === '' ? null : Number($('#purchase-price').value), notes:$('#notes').value.trim(), updatedAt:now() };
+    if (formMode === 'wish') {
+      const wishFields = { ...fields, quantity: Number($('#wish-quantity').value) };
+      const wish = existing ? validateWish({ ...existing, ...wishFields }) : createWish(wishFields);
+      const wishlist = existing ? state.wishlist.map(w => w.id === editId ? wish : w) : [...state.wishlist, wish];
+      if (await commit(state.rolls, {}, wishlist)) { $('#roll-dialog').close(); $('#quick-code').value = ''; view('wishlist'); toast('Wunschliste gespeichert.'); }
+      return;
+    }
+    if (purchaseId) {
+      const next = purchaseWish(state, purchaseId, fields);
+      if (await commit(next.rolls, {}, next.wishlist)) { $('#roll-dialog').close(); toast('1 Rolle ins Regal übernommen. Wunschmenge aktualisiert.'); }
+      return;
+    }
     const roll = existing ? validateRoll({...existing,...fields}) : createRoll(fields);
     const rolls = existing ? state.rolls.map(r => r.id === editId ? roll : r) : [...state.rolls,roll];
     if (await commit(rolls)) { $('#roll-dialog').close(); $('#quick-code').value = ''; toast(existing ? 'Rolle aktualisiert.' : `${roll.colorName} steht jetzt im Regal.`); }
@@ -228,7 +279,7 @@ function prepareImport(text) {
 }
 function updateImportSummary() {
   if (!pendingImport) return;
-  try { const mode = $('#import-mode').value, plan = planImport(state || createState([]),pendingImport,mode); $('#import-summary').textContent = mode === 'merge' ? `${pendingImport.rolls.length} Rollen im Backup: ${plan.added} werden ergänzt, ${plan.duplicates} vorhandene IDs übersprungen. Danach: ${plan.total} Rollen.` : `Der gesamte aktuelle Bestand (${state?.rolls.length ?? 'beschädigte Daten'} Rollen) wird durch ${plan.total} Rollen aus diesem Backup ersetzt. Änderungen seit dem Backup gehen dabei verloren.`; $('#import-confirm').disabled = false; }
+  try { const mode = $('#import-mode').value, plan = planImport(state || createState([]),pendingImport,mode); $('#import-summary').textContent = mode === 'merge' ? `${pendingImport.rolls.length} Rollen im Backup: ${plan.added} werden ergänzt, ${plan.duplicates} vorhandene IDs übersprungen. Danach: ${plan.total} Rollen.` : `Der gesamte aktuelle Bestand (${state?.rolls.length ?? 'beschädigte Daten'} Rollen) wird durch ${plan.total} Rollen aus diesem Backup ersetzt. Änderungen seit dem Backup gehen dabei verloren.`; $('#import-summary').textContent += mode === 'merge' ? ` Wunschliste: ${plan.wishAdded} neue Einträge, ${plan.wishDuplicates} vorhandene IDs übersprungen.` : ` Wunschliste wird durch ${plan.wishlist.length} Einträge ersetzt.`; $('#import-confirm').disabled = false; }
   catch(error) { $('#backup-error').textContent = message(error); $('#import-confirm').disabled = true; }
 }
 $('#import-mode').addEventListener('change',updateImportSummary);
@@ -236,13 +287,13 @@ $('#import-file').addEventListener('change',async () => { const file = $('#impor
 $('#validate-paste').addEventListener('click',() => prepareImport($('#import-text').value));
 $('#import-confirm').addEventListener('click',async () => {
   if (!pendingImport || busy) return; $('#backup-error').textContent = ''; const mode = $('#import-mode').value;
-  if (mode === 'replace' && !await ask('Bestand ersetzen?','Der aktuelle Bestand wird durch das geprüfte Backup ersetzt. Der vorherige Stand wird zusätzlich lokal gesichert.','Bestand ersetzen')) return;
+  if (mode === 'replace' && !await ask('Bestand ersetzen?','Bestand und Wunschliste werden durch das geprüfte Backup ersetzt. Ein altes Backup ohne Wunschliste leert diese. Der vorherige Stand wird zusätzlich lokal gesichert.','Bestand ersetzen')) return;
   $('#import-confirm').disabled = true;
   try {
     if (repository.raw !== importedAtRaw) throw new Error('Der Bestand hat sich seit der Vorschau geändert. Bitte das Backup erneut prüfen.');
     const plan = planImport(state || createState([]),pendingImport,mode);
-    if (state) { if (!await commit(plan.rolls,{backup:true})) return; }
-    else { state = await repository.recover(pendingImport,damagedRaw); $('#fatal').hidden = true; $('#add-open').disabled = false; $('#quick-form button').disabled = false; render(); }
+    if (state) { if (!await commit(plan.rolls,{backup:true},plan.wishlist)) return; }
+    else { state = await repository.recover(pendingImport,damagedRaw); $('#fatal').hidden = true; $('#add-open').disabled = false; $('#quick-form button').disabled = false; $('#wish-add').disabled = false; render(); }
     pendingImport = null; $('#import-preview').hidden = true; $('#import-text').value = ''; $('#backup-dialog').close(); toast(`Import abgeschlossen: ${plan.total} Rollen.`);
   } catch(error) { $('#backup-error').textContent = message(error); }
   finally { $('#import-confirm').disabled = false; }

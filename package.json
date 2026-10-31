@@ -1,6 +1,6 @@
 {
   "name": "filament-shelf",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "Buildless, browser-local filament inventory for Bambu Lab P2S Combo",

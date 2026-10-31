@@ -60,7 +60,7 @@ test('export-import roundtrip retains optional fields, archive, history and dupl
   assert.deepEqual(parseImport(JSON.stringify({...s,exportedAt:new Date().toISOString()})),s);
 });
 test('invalid import shape, version, JSON, oversize and duplicate IDs rejected',() => {
-  for (const value of ['garbage','null','[]','{}',JSON.stringify({...state(),version:2}),JSON.stringify({...state(),revision:-1}),JSON.stringify({...state(),rolls:[seed()[0],seed()[0]]})]) assert.throws(() => parseImport(value));
+  for (const value of ['garbage','null','[]','{}',JSON.stringify({...state(),version:3}),JSON.stringify({...state(),revision:-1}),JSON.stringify({...state(),rolls:[seed()[0],seed()[0]]})]) assert.throws(() => parseImport(value));
   assert.throws(() => parseImport(' '.repeat(5*1024*1024+1)));
 });
 test('import validates dates, prices, colors, ids, booleans and history',() => {

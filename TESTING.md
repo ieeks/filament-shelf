@@ -1,12 +1,15 @@
-# Verification – Filament Shelf v1
+# Verification – Filament Shelf v1.1
 
 Date: 2026-10-31
 
 ## Automated tests
 
-`node --test tests/*.test.js` — **31 tests pass**, zero dependencies.
+`node --test tests/*.test.js` — **43 tests pass**, zero dependencies.
 
 Coverage:
+
+- Wishlist validation, v1 migration, backup round trips, duplicate IDs and idempotent imports.
+- Atomic wish-to-stock transfer, decrement/removal, invalid transfer rollback and storage failure protection.
 
 - Official code `10301`, material, name, manufacturer and exact HEX.
 - 318 catalog entries; multi-variant lookup and duplicate-record collapse.
@@ -28,6 +31,8 @@ Tests use a memory-backed Storage implementation; quota and concurrency failures
 ## Browser checks
 
 Executed through the cloud Chromium browser against the static app:
+
+- Wishlist: code 10301 recognized, two desired roles saved without affecting inventory; reload preserved the wish. Taking one role into stock increased inventory from 16 to 17 and reduced the wish quantity from two to one.
 
 - First start displays 16 roles / 16 kg.
 - Code `10301` fills PLA Basic, Pumpkin Orange and `#FF9016` (opaque alpha normalized for display).
