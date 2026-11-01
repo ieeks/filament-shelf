@@ -1,12 +1,14 @@
-# Verification – Filament Shelf v1.1
+# Verification – Filament Shelf v1.2
 
-Date: 2026-10-31
+Date: 2026-11-01
 
 ## Automated tests
 
-`node --test tests/*.test.js` — **43 tests pass**, zero dependencies.
+`node --test tests/*.test.js` — **59 tests pass**, zero dependencies.
 
 Coverage:
+
+- Cloud adoption races, stale device saves, atomic inventory/wishlist transfers, offline failures, size limits, per-account cache isolation and recovery.
 
 - Wishlist validation, v1 migration, backup round trips, duplicate IDs and idempotent imports.
 - Atomic wish-to-stock transfer, decrement/removal, invalid transfer rollback and storage failure protection.
@@ -50,4 +52,15 @@ Browser responsive checks are Chromium viewports, not a claim of testing real iO
 
 ## Publication
 
-The user created `ieeks/filament-shelf` and enabled GitHub Pages from `main` / root on 2026-10-31. The source is prepared for that existing repository, retaining the initial commit. No custom build workflow or secrets are required. GitHub's `pages build and deployment` workflow provides the deployment result.
+The user created `ieeks/filament-shelf` and enabled GitHub Pages from `main` / root on 2026-11-01. The source is prepared for that existing repository, retaining the initial commit. No custom build workflow or secrets are required. GitHub's `pages build and deployment` workflow provides the deployment result.
+
+
+## Firestore emulator verification (2026-11-01)
+
+`npm --prefix tests/firebase test` — **4 tests pass** with Java 21 and Firebase Tools 15.34.2. Uses only project `demo-filament-shelf` and local emulator port 8088, no production credentials.
+
+- Owner Google account can read/create; other users, anonymous clients and password-provider accounts cannot access that shelf.
+- Revision reuse/skipping, extra fields, wrong types/formats, oversize writes, client deletion/listing and unrelated paths are denied.
+- The actual SDK transport and CloudRepository are tested together against Firestore: exactly one of two racing saves succeeds, with stock and wishlist committed as one snapshot.
+
+Cloud browser QA: the real CDN SDK loads, Sync opens with a working sign-in control, and the default local inventory remains at 16 roles / 16 kg. A disposable transport (not deployed) was used to test the first-use consent and two-tab UI conflict: an unsaved note stayed in its dialog and saving was blocked after the other tab changed stock. Real Google login, the production Firebase rules publication, device-to-device production sync, and physical iPhone Safari testing still require the owner's setup/login. No production account or test inventory was created by QA.

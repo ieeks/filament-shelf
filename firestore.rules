@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/shelf/inventory {
+      function owner() {
+        return request.auth != null
+          && request.auth.uid == userId
+          && request.auth.token.firebase.sign_in_provider == 'google.com';
+      }
+      function validSnapshot() {
+        return request.resource.data.keys().hasAll(['format', 'revision', 'payload'])
+          && request.resource.data.keys().hasOnly(['format', 'revision', 'payload'])
+          && request.resource.data.format == 1
+          && request.resource.data.revision is int
+          && request.resource.data.revision >= 0
+          && request.resource.data.payload is string
+          && request.resource.data.payload.size() > 0
+          && request.resource.data.payload.size() <= 900000;
+      }
+      allow get: if owner();
+      allow create: if owner() && validSnapshot() && request.resource.data.revision == 0;
+      allow update: if owner() && validSnapshot()
+        && request.resource.data.revision == resource.data.revision + 1;
+      // Empty inventories are normal snapshots. Clients never delete the cloud document.
+      allow delete, list: if false;
+    }
+  }
+}

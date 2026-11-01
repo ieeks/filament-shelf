@@ -1,9 +1,10 @@
 # Filament Shelf
 
-Ein leichtes, statisches Filament-Inventar für den Bambu Lab P2S Combo. HTML, CSS und Vanilla JavaScript, ohne Backend, API-Keys, Frameworks, npm-Abhängigkeiten oder Build-Schritt.
+Ein leichtes, statisches Filament-Inventar für den Bambu Lab P2S Combo. HTML, CSS und Vanilla JavaScript, ohne eigenes Backend, Frameworks, npm-Abhängigkeiten zum Betrieb oder Build-Schritt. Optional synchronisiert Firebase den Bestand über dein Google-Konto. Die öffentliche Firebase-Web-Konfiguration enthält keine Admin-Zugangsdaten.
 
-## Version 1.1
+## Version 1.2
 
+- Optionale Cloud-Synchronisierung von Bestand und Wunschliste mit Google-Anmeldung, einmaliger Übernahme und Schutz vor konkurrierenden Änderungen. Einrichtung: [FIREBASE_SETUP.md](FIREBASE_SETUP.md).
 - Helles, responsives Dashboard mit farbigen CSS-Spulen, Instrument Sans und IBM Plex Mono.
 - **16 Ausgangsrollen / 16 kg**: 12 PLA, 4 PETG; Purple als Refill, Navy Blue als Geschenk (0 €). Alle Rollen starten bei 1.000 g und Status „Neu“.
 - Lokaler offizieller Bambu-Studio-Katalog mit **318 Einträgen**, abgerufen am 31.10.2026. `10301` erkennt Bambu Lab / PLA Basic / Pumpkin Orange / `#FF9016FF`.
@@ -78,12 +79,16 @@ Die Kennzahlen beziehen sich immer auf **alle gespeicherten Rollen inklusive Arc
 
 ## Speicherung und Backups – wichtig
 
-**Version 1 speichert nur im localStorage des jeweiligen Browsers auf der jeweiligen Domain. Es gibt KEINE automatische Synchronisierung zwischen iPhone, iPad und Desktop.** Auch ein anderer Browser oder eine andere Domain hat einen eigenen Datenbestand. Der erste Aufruf eines neuen Browsers legt wieder den Ausgangsbestand an.
+**Ohne Anmeldung speichert die App im localStorage dieses Browsers auf dieser Domain.** Ein anderer Browser hat einen eigenen lokalen Bestand und legt beim ersten lokalen Start die 16 Ausgangsrollen an.
+
+**Mit Sync → Google-Anmeldung** verwenden alle Geräte mit demselben Konto denselben Cloud-Bestand samt Wunschliste. Beim ersten Verbinden musst du den Bestand des richtigen Browsers ausdrücklich übernehmen. Weitere Geräte laden den vorhandenen Cloud-Stand; Startrollen werden nicht angehängt. Auch ein leerer Cloud-Bestand bleibt leer. Der ursprüngliche lokale Bestand bleibt separat erhalten; beim Abmelden wird dieser lokale Stand angezeigt. Lokale Änderungen nach dem Abmelden synchronisieren sich nicht automatisch mit der Cloud.
+
+Cloud-Schreibvorgänge benötigen Internet und werden erst nach erfolgreicher Server-Transaktion als gespeichert angezeigt. Offline ist der bereits geladene Cloud-Stand im offenen Tab lesbar. Ein Offline-Neustart der Cloud-Ansicht wird nicht zugesichert. Änderungen anderer Geräte erscheinen automatisch, solange kein Formular offen ist. Bei offenen Formularen bleiben Eingaben erhalten, Speichern wird blockiert und **Aktuellen Stand laden** verwirft nach Bestätigung den Entwurf. Auch ein Rennen ohne vorherige Benachrichtigung wird serverseitig abgewiesen.
 
 - Änderungen werden sofort beim Speichern/Buchen/Archivieren persistiert. Nicht gespeicherte Formulareingaben sind keine gespeicherten Bestandsänderungen.
 - Der Ausgangsbestand wird nur angelegt, wenn der Speicherschlüssel `filament-shelf:v1` überhaupt nicht existiert. Eine gespeicherte leere Rollenliste bleibt leer.
 - Neuladen löscht nichts. Das Löschen von Browser-/Websitedaten, private Tabs, Speicherbereinigung durch das Betriebssystem oder ein Geräteverlust können lokale Daten jedoch entfernen. Deshalb regelmäßig **Backup → JSON exportieren**.
-- Kein Datentransfer zum Drucker, Bambu-Konto oder einem Backend. Google Fonts werden extern geladen; bei Ausfall greifen Systemschriften. Der Katalog selbst ist vollständig lokal. Ein vollständiger Offline-Start der Website ist ohne Service Worker nicht garantiert.
+- Keine Drucker-/Bambu-Konto-Verbindung. Bei aktiviertem Sync werden Bestand, Wunschliste, Kaufdaten und Notizen in deinem Firebase-Projekt gespeichert. SDKs werden erst beim Öffnen von Sync oder nach früherer Anmeldung von Googles CDN geladen. Google Fonts werden extern geladen; bei Ausfall greifen Systemschriften. Der Katalog selbst ist vollständig lokal. Ein vollständiger Offline-Start der Website ist ohne Service Worker nicht garantiert.
 - Speicherfehler werden angezeigt; der sichtbare Bestand wird erst nach erfolgreichem Schreiben aktualisiert. Ungültige Bestandsdaten werden niemals automatisch durch den Startbestand ersetzt.
 - Bei beschädigten Daten: zuerst **Rohdaten sichern**, danach ein gültiges Backup über **Backup** importieren. Der beschädigte Originaltext bleibt zusätzlich unter `filament-shelf:damaged-original:v1` erhalten. Speicher- oder Sicherheitsblockaden müssen im Browser behoben werden.
 - Bei parallelen Tabs verhindert ein Vergleich des gespeicherten Standes das Überschreiben veralteter Daten. Unterstützte Browser verwenden zusätzlich Web Locks. Nach einer Änderung im anderen Tab neu laden. Ohne Web-Locks-Unterstützung können exakt gleichzeitige Schreibvorgänge technisch nicht vollständig serialisiert werden; am besten nur einen Bearbeitungstab verwenden.
@@ -93,11 +98,11 @@ Die Kennzahlen beziehen sich immer auf **alle gespeicherten Rollen inklusive Arc
 
 **Ergänzen**: Nur unbekannte Rollen- und Wunsch-IDs hinzufügen. Existierende IDs bleiben unverändert, selbst wenn das Backup andere Gewichte enthält. Ein zweimal importiertes Backup verdoppelt deshalb keine Rollen. Unabhängig angelegte reale Rollen derselben Farbe haben unterschiedliche IDs und bleiben erhalten.
 
-**Ersetzen**: Den gesamten Bestand und die Wunschliste durch den Backup-Stand ersetzen, mit zweiter Bestätigung. Für den Wechsel auf ein anderes Gerät meistens sinnvoll, weil dort bereits die 16 Startrollen vorhanden sein können. Vorher wird der bisherige Stand lokal gesichert. Über **Stand vor letztem Import wiederherstellen** lässt er sich erneut als Ersetzungsimport prüfen und zurückholen. Auch eine Wiederherstellung legt den vorherigen Stand ab.
+**Ersetzen**: Den gesamten Bestand und die Wunschliste durch den Backup-Stand ersetzen, mit zweiter Bestätigung. Für den Wechsel auf ein anderes Gerät meistens sinnvoll, weil dort bereits die 16 Startrollen vorhanden sein können. Vorher wird der bisherige Stand lokal gesichert; im Cloud-Modus getrennt je Google-Nutzer-ID. Über **Stand vor letztem Import wiederherstellen** lässt er sich erneut als Ersetzungsimport prüfen und zurückholen. Auch eine Wiederherstellung legt den vorherigen Stand ab.
 
 Schema `app: "filament-shelf"`, `version: 2`; maximal 5 MB, 5.000 Rollen und 5.000 Wünsche. Alte Backups und gespeicherte Daten mit Version 1 werden ohne erneuten Startimport übernommen. Beim Ergänzen eines alten Backups bleiben vorhandene Wünsche erhalten; beim Ersetzen wird dessen fehlende Wunschliste als leer übernommen (mit Warnung). Der localStorage-Schlüssel bleibt absichtlich unverändert. Validiert werden unter anderem IDs, Dubletten-IDs, Gewicht/Status, Farbcode, HEX, Datum, Preise und Verbrauchseinträge. Ungültige Dateien ändern den Bestand nicht. Ein gültiges Backup mit `rolls: []` ist zulässig. Unbekannte Zusatzfelder werden verworfen. Import auch durch Einfügen von JSON möglich.
 
-## Architektur – spätere Synchronisierung
+## Architektur und Synchronisierung
 
 | Datei | Aufgabe |
 | --- | --- |
@@ -105,15 +110,22 @@ Schema `app: "filament-shelf"`, `version: 2`; maximal 5 MB, 5.000 Rollen und 5.0
 | `js/app.js` | Ereignisse, Formularlogik, sichere DOM-Ausgabe |
 | `js/core.js` | Reine Fachlogik, Katalog, Validierung, Import, Statistik |
 | `js/storage.js` | Asynchroner Repository-Adapter für localStorage |
+| `js/cloud-storage.js` | Validierte Cloud-Snapshots, Transaktionen, Konfliktprüfung und lokale Sicherung |
+| `js/firebase-client.js`, `js/firebase-config.js` | Google-Anmeldung, verzögert geladene SDKs und Firestore-Transport |
+| `firestore.rules` | Zugriff nur auf das eigene Google-Konto und fortlaufende Revisionen |
 | `js/catalog-data.js` | Kompakter lokaler Katalog |
 | `js/seed.js` | Verlässlicher Ausgangsbestand und Katalogfallback |
 | `tests/*.test.js` | Automatisierte Tests ohne Zusatzpakete |
 | `data/bambu-source.json` | Originaldaten für Nachvollziehbarkeit |
 | `scripts/update-catalog.mjs` | Optionales manuelles Katalog-Update |
 
-Die Oberfläche speichert über `repository.load()`, `save()`, `recovery()` und `recover()`, die Fachlogik bleibt von localStorage unabhängig. Für Firestore kann später ein zweiter Adapter mit denselben Rollen-IDs und Schemafeldern ergänzt werden. Authentifizierung, Konfliktlösung, Security Rules und Sync-Status müssten dann bewusst hinzugefügt werden. **Firebase ist jetzt nicht eingebunden.**
+Die Oberfläche verwendet austauschbare Repository-Adapter. Lokal bleiben `load`, `save`, `recovery` und `recover` erhalten; Cloud-Daten verwenden dieselbe Validierung und dieselben Rollen-/Wunsch-IDs. Firebase-SDK 13.1.0 wird über offizielle CDN-Module ohne Build geladen. Anmeldung erfolgt über einen direkt ausgelösten Google-Popup; auf GitHub Pages wird kein ungeeigneter Cross-Domain-Redirect als Ersatz verwendet.
 
-Für gemeinsamen Bestand auf mehreren Geräten ist der nächste Schritt Firestore mit Google-Anmeldung: Alle Geräte verwenden dasselbe Konto; Security Rules beschränken Lesen und Schreiben auf dessen Nutzer-ID. Der bestehende Browserbestand wird einmal ausdrücklich als Ausgangsstand übernommen, weitere Geräte laden den Cloud-Bestand statt erneut Startrollen anzulegen. Rollen und Wünsche bekommen getrennte Datensätze mit stabilen IDs; konkurrierende Änderungen und die Übernahme aus der Wunschliste müssen transaktional verarbeitet werden. Dafür werden ein Firebase-Projekt, aktiviertes Firestore/Google-Login und die öffentliche Web-App-Konfiguration benötigt. Keine Admin-Schlüssel oder Passwörter gehören ins Repository. Die Website kann weiter auf GitHub Pages liegen.
+Für ein persönliches Regal reicht ein atomarer JSON-Snapshot in `users/{uid}/shelf/inventory`. Bestand und Wunschliste werden so gemeinsam gespeichert. Eine Firestore-Transaktion vergleicht den zuvor geladenen Stand und schreibt die nächste Revision. Veraltete Änderungen werden abgewiesen statt automatisch zusammengeführt. Bei unerreichbarer Cloud wird nicht still auf lokale Schreibvorgänge umgeschaltet.
+
+Der Cloud-Snapshot ist bewusst auf **900.000 UTF-8-Bytes** begrenzt, unter dem Firestore-Dokumentlimit. Größere Bestände bleiben lokal und als JSON-Backup nutzbar, können aber nicht in die Cloud übernommen/importiert werden. Die Regeln prüfen Besitzer, Google-Provider, Hüllformat, Feldtypen, Größe und Revisionsfolge; die vollständige Filament-Validierung übernimmt der Client beim Lesen und vor jedem Schreiben. Fremde Konten können deinen Snapshot weder lesen noch schreiben. Jedes andere angemeldete Google-Konto kann nur ein eigenes Regal anlegen. Serverseitiges Löschen des Cloud-Dokuments ist für Clients verboten.
+
+Lokale Cloud-Kopien und Import-Sicherungen sind nach Nutzer-ID getrennt. Ein Fehler beim lokalen Cache nach erfolgreichem Server-Schreiben macht die Cloud-Änderung nicht rückgängig; er wird im Speicherstatus angezeigt. Vor einem Ersetzungsimport muss die lokale Sicherung gelingen, andernfalls wird vor der Cloud-Änderung abgebrochen.
 
 Benutzertexte werden mit `textContent` bzw. Formularwerten ausgegeben, niemals als HTML ausgewertet. Dynamische Farben werden streng validiert. Kein `eval`, keine Secrets, keine Remote-Katalogabfrage beim Start.
 
@@ -127,7 +139,7 @@ npm test
 node --test tests/*.test.js
 ```
 
-Details und Browser-QA siehe `TESTING.md`. Echte iOS-Safari-Hardwareprüfung steht aus; die schmalen Layouts wurden im Chromium-Browser bei 390/820 px geprüft.
+59 Kern-/Adaptertests laufen ohne Zusatzpakete. Vier zusätzliche Tests für echte Firestore-Regeln und konkurrierende Transaktionen: Java 21+, `npm install --prefix tests/firebase`, danach `npm --prefix tests/firebase test`. Diese optionalen Testpakete gehören nicht zum Betrieb der Website. Details und Browser-QA siehe `TESTING.md`. Echte iOS-Safari-Hardwareprüfung steht aus; die schmalen Layouts wurden im Chromium-Browser bei 390/820 px geprüft.
 
 ## Katalog aktualisieren
 
@@ -142,6 +154,7 @@ Diff prüfen, Quellenstand in `NOTICE.md` aktualisieren und committen. Der Regre
 
 ## Bewusst außerhalb von V1
 
-Kein Firebase, keine Drucker-/AMS-Verbindung, keine Benutzerkonten, keine Kaufpreis-Automatik, kein Dark Mode und kein Service Worker. Die App bleibt ein schneller, manuell gepflegter Bestand mit sicherem Backup.
+Keine Drucker-/AMS-Verbindung, keine Kaufpreis-Automatik, kein Dark Mode und kein Service Worker. Die App bleibt ein schneller, manuell gepflegter Bestand mit sicherem Backup.
 
 Quelle, Farbbesonderheiten und Lizenz: [NOTICE.md](NOTICE.md), [LICENSE](LICENSE).
+

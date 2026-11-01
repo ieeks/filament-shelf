@@ -3,3 +3,7 @@ node_modules/
 .DS_Store
 *.zip
 dist/
+
+
+**/node_modules
+*-debug.log
