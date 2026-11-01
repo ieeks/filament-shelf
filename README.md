@@ -2,8 +2,9 @@
 
 Ein leichtes, statisches Filament-Inventar für den Bambu Lab P2S Combo. HTML, CSS und Vanilla JavaScript, ohne eigenes Backend, Frameworks, npm-Abhängigkeiten zum Betrieb oder Build-Schritt. Optional synchronisiert Firebase den Bestand über dein Google-Konto. Die öffentliche Firebase-Web-Konfiguration enthält keine Admin-Zugangsdaten.
 
-## Version 1.2
+## Version 1.3
 
+- Widerrufbarer Leselink ohne Anmeldung für Freunde/Familie: nur Material, Farbe, Gewicht und Rollenstatus. Kaufdaten, Notizen, Kontodaten, Archiv und Wunschliste bleiben privat.
 - Optionale Cloud-Synchronisierung von Bestand und Wunschliste mit Google-Anmeldung, einmaliger Übernahme und Schutz vor konkurrierenden Änderungen. Einrichtung: [FIREBASE_SETUP.md](FIREBASE_SETUP.md).
 - Helles, responsives Dashboard mit farbigen CSS-Spulen, Instrument Sans und IBM Plex Mono.
 - **16 Ausgangsrollen / 16 kg**: 12 PLA, 4 PETG; Purple als Refill, Navy Blue als Geschenk (0 €). Alle Rollen starten bei 1.000 g und Status „Neu“.
@@ -71,6 +72,14 @@ Unter **Wunschliste → Wunsch hinzufügen** einen Farbcode erkennen oder manuel
 - Leere Rollen sind standardmäßig ausgeblendet. Über Status **Leer** oder **Im Regal · alle** anzeigen. Archivierte Rollen werden nur im **Archiv** angezeigt und können zurückgeholt werden. Auch gefüllte Rollen dürfen bewusst archiviert werden.
 - Löschen entfernt die Rolle samt Verbrauchsprotokoll nach Bestätigung. Zum Aufbewahren der Historie archivieren.
 
+### Bestand teilen
+
+**Teilen → Leselink erstellen → Link kopieren**. Dafür muss dein Cloud-Regal verbunden sein; Empfänger benötigen keine Anmeldung. Sie können suchen und nach Material filtern, aber nichts bearbeiten. Die Leseransicht zeigt ausschließlich Rollen außerhalb des Archivs mit Material, Farbe/Farbcode, Farbwert, Spule/Refill, Start-/Restgewicht und Status. Wishlist, IDs, Preise, Kaufdatum, Notizen, Verbrauchsprotokoll und Kontodaten werden nicht an die Leser übertragen.
+
+Gespeicherte Cloud-Änderungen aktualisieren die Freigabe in derselben Transaktion. **Freigabe deaktivieren** entfernt die öffentliche Kopie; geöffnete Leseransichten werden bei bestehender Verbindung geleert. Eine neue Freigabe bekommt einen neuen Link. Bereits angefertigte Kopien oder Screenshots lassen sich dadurch nicht zurückholen. Jeder mit dem Link kann ihn weitergeben.
+
+Vor der ersten Nutzung die **aktuelle** `firestore.rules` erneut in Firebase veröffentlichen. Die bisherigen Regeln ohne Freigabe unterstützen das Erstellen von Leselinks nicht. Die Veröffentlichung auf GitHub Pages allein ändert Firebase-Regeln nicht.
+
 ### Statistikdefinitionen
 
 Die Kennzahlen beziehen sich immer auf **alle gespeicherten Rollen inklusive Archiv**; Kartenfilter ändern die Gesamtzahlen nicht. „Farben im Bestand“ zählt Kombinationen aus Hersteller, Material, Farbcode und Farbdarstellung mit positivem Restgewicht. Zwei Rollen derselben Variante zählen als eine Farbe. Weiß in unterschiedlichen Materialien zählt getrennt. Farbfamilien werden aus dem HEX-Farbton abgeleitet und sind eine praktische Näherung.
@@ -112,7 +121,9 @@ Schema `app: "filament-shelf"`, `version: 2`; maximal 5 MB, 5.000 Rollen und 5.0
 | `js/storage.js` | Asynchroner Repository-Adapter für localStorage |
 | `js/cloud-storage.js` | Validierte Cloud-Snapshots, Transaktionen, Konfliktprüfung und lokale Sicherung |
 | `js/firebase-client.js`, `js/firebase-config.js` | Google-Anmeldung, verzögert geladene SDKs und Firestore-Transport |
-| `firestore.rules` | Zugriff nur auf das eigene Google-Konto und fortlaufende Revisionen |
+| `firestore.rules` | Privater Besitzerzugriff und isolierte, lesbare Freigaben |
+| `js/sharing.js` | Whitelist für öffentliche Daten und zufällige Freigabe-IDs |
+| `share.html`, `js/share-view.js` | Leseransicht ohne Authentifizierung und lokalen Startimport |
 | `js/catalog-data.js` | Kompakter lokaler Katalog |
 | `js/seed.js` | Verlässlicher Ausgangsbestand und Katalogfallback |
 | `tests/*.test.js` | Automatisierte Tests ohne Zusatzpakete |
@@ -123,7 +134,7 @@ Die Oberfläche verwendet austauschbare Repository-Adapter. Lokal bleiben `load`
 
 Für ein persönliches Regal reicht ein atomarer JSON-Snapshot in `users/{uid}/shelf/inventory`. Bestand und Wunschliste werden so gemeinsam gespeichert. Eine Firestore-Transaktion vergleicht den zuvor geladenen Stand und schreibt die nächste Revision. Veraltete Änderungen werden abgewiesen statt automatisch zusammengeführt. Bei unerreichbarer Cloud wird nicht still auf lokale Schreibvorgänge umgeschaltet.
 
-Der Cloud-Snapshot ist bewusst auf **900.000 UTF-8-Bytes** begrenzt, unter dem Firestore-Dokumentlimit. Größere Bestände bleiben lokal und als JSON-Backup nutzbar, können aber nicht in die Cloud übernommen/importiert werden. Die Regeln prüfen Besitzer, Google-Provider, Hüllformat, Feldtypen, Größe und Revisionsfolge; die vollständige Filament-Validierung übernimmt der Client beim Lesen und vor jedem Schreiben. Fremde Konten können deinen Snapshot weder lesen noch schreiben. Jedes andere angemeldete Google-Konto kann nur ein eigenes Regal anlegen. Serverseitiges Löschen des Cloud-Dokuments ist für Clients verboten.
+Der Cloud-Snapshot ist bewusst auf **900.000 UTF-8-Bytes** begrenzt, unter dem Firestore-Dokumentlimit. Größere Bestände bleiben lokal und als JSON-Backup nutzbar, können aber nicht in die Cloud übernommen/importiert werden. Die Regeln prüfen Besitzer, Google-Provider, Hüllformat, Feldtypen, Größe und Revisionsfolge; die vollständige Filament-Validierung übernimmt der Client beim Lesen und vor jedem Schreiben. Fremde Konten können deinen privaten Snapshot weder lesen noch schreiben. Jedes andere angemeldete Google-Konto kann nur ein eigenes Regal anlegen. Serverseitiges Löschen des Cloud-Dokuments ist für Clients verboten.
 
 Lokale Cloud-Kopien und Import-Sicherungen sind nach Nutzer-ID getrennt. Ein Fehler beim lokalen Cache nach erfolgreichem Server-Schreiben macht die Cloud-Änderung nicht rückgängig; er wird im Speicherstatus angezeigt. Vor einem Ersetzungsimport muss die lokale Sicherung gelingen, andernfalls wird vor der Cloud-Änderung abgebrochen.
 
@@ -139,7 +150,7 @@ npm test
 node --test tests/*.test.js
 ```
 
-59 Kern-/Adaptertests laufen ohne Zusatzpakete. Vier zusätzliche Tests für echte Firestore-Regeln und konkurrierende Transaktionen: Java 21+, `npm install --prefix tests/firebase`, danach `npm --prefix tests/firebase test`. Diese optionalen Testpakete gehören nicht zum Betrieb der Website. Details und Browser-QA siehe `TESTING.md`. Echte iOS-Safari-Hardwareprüfung steht aus; die schmalen Layouts wurden im Chromium-Browser bei 390/820 px geprüft.
+66 Kern-/Adaptertests laufen ohne Zusatzpakete. Sieben zusätzliche Tests für echte Firestore-Regeln und konkurrierende Transaktionen: Java 21+, `npm install --prefix tests/firebase`, danach `npm --prefix tests/firebase test`. Diese optionalen Testpakete gehören nicht zum Betrieb der Website. Details und Browser-QA siehe `TESTING.md`. Echte iOS-Safari-Hardwareprüfung steht aus; die schmalen Layouts wurden im Chromium-Browser bei 390/820 px geprüft.
 
 ## Katalog aktualisieren
 
@@ -158,3 +169,13 @@ Keine Drucker-/AMS-Verbindung, keine Kaufpreis-Automatik, kein Dark Mode und kei
 
 Quelle, Farbbesonderheiten und Lizenz: [NOTICE.md](NOTICE.md), [LICENSE](LICENSE).
 
+
+## Technische Freigabegrenzen
+
+Ein Leselink enthält ein mit Web Crypto erzeugtes 256-Bit-Zufallstoken im URL-Fragment. Es ist kein öffentliches Benutzerprofil und wird nicht im JSON-Backup gespeichert. Freigaben werden nur bewusst aktiviert.
+
+Die private Cloud-Hülle enthält optional `shareId`. Der Firestore-Transport schreibt beim Speichern neben dem privaten Bestand eine neue, strikt ausgewählte öffentliche Projektion nach `shares/{token}/public/inventory`. Das Besitzerdokument `shares/{token}` ist für Leser gesperrt; es bleibt nach Widerruf als kleine Zuordnungsinformation erhalten, damit kein anderes Konto ein bekanntes altes Token beanspruchen kann. Die öffentliche Projektion enthält keine Nutzer-ID.
+
+Die Regeln verbieten das Auflisten von Freigaben und privaten Daten, erlauben den Dokument-Lesezugriff per Token und beschränken alle Schreibzugriffe auf den Besitzer. Regeln erzwingen bei aktivierter Freigabe passende Revisionen von privatem und öffentlichem Bestand; beim Entfernen/Wechseln des Tokens muss die alte öffentliche Kopie in derselben Transaktion gelöscht werden. Alte App-Versionen können dadurch keine veraltete öffentliche Kopie stehen lassen. Wenn ein Freigabe-Schreibvorgang fehlschlägt, bleibt auch der private Bestand unverändert.
+
+Die Leseransicht lädt keine Firebase-Auth-Bibliothek, legt keinen Ausgangsbestand an und speichert keine lokale Inventarkopie. Bei ungültigem oder widerrufenem Link zeigt sie einen Hinweis. `noindex` und `no-referrer` sind gesetzt; der Link bleibt trotzdem eine Zugangsberechtigung für jeden, der ihn kennt.

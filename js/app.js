@@ -66,7 +66,7 @@ function render() {
   options('#subtype',[...new Set(state.rolls.filter(r => selectedFamily === 'all' || family(r.material) === selectedFamily).map(r => r.material))].sort(),'Alle Untertypen');
   options('#color-filter',[...new Set(state.rolls.flatMap(r => r.colors.map(colorFamily)))].sort(),'Alle Farben');
   renderStorageStatus();
-  renderGrid(); renderStats(s); renderWishlist();
+  renderGrid(); renderStats(s); renderWishlist(); renderSharing();
 }
 function filteredRolls() {
   const query = $('#search').value.trim().toLocaleLowerCase('de');
@@ -354,7 +354,7 @@ function showSync() {
   $('#sync-logout').hidden = !cloudUser; $('#sync-logout').disabled = busy || cloudConnecting;
   $('#sync-retry').hidden = !cloudUser; $('#sync-retry').disabled = busy || cloudConnecting;
   $('#sync-status').textContent = cloudConnecting ? 'Cloud-Verbindung wird geprüft …' : cloudUser ? (cloudReady ? 'Dein Cloud-Regal ist verbunden.' : 'Angemeldet · Cloud-Bestand noch nicht bereit.') : 'Lokaler Modus · noch nicht angemeldet.';
-  renderStorageStatus();
+  renderStorageStatus(); renderSharing();
 }
 function applyCloud(next) {
   if (!cloudReady || next.revision <= state.revision) return;
@@ -365,14 +365,14 @@ function flushCloud() {
   if (!pendingCloud || busy || !cloudReady) return;
   if (pendingCloud.revision <= state.revision) { pendingCloud = null; renderStorageStatus(); return; }
   if (document.querySelector('#roll-dialog[open],#consume-dialog[open],#backup-dialog[open],#confirm-dialog[open]')) {
-    $('#cloud-stale').hidden = false; renderStorageStatus(); return;
+    $('#cloud-stale').hidden = false; renderStorageStatus(); renderSharing(); return;
   }
   state = cloudRepository.adopt(pendingCloud); pendingCloud = null; $('#cloud-stale').hidden = true;
   render(); toast('Bestand von einem anderen Gerät aktualisiert.');
 }
-['#roll-dialog','#consume-dialog','#backup-dialog','#confirm-dialog'].forEach(selector => $(selector).addEventListener('close',() => queueMicrotask(flushCloud)));
+['#roll-dialog','#consume-dialog','#backup-dialog','#confirm-dialog','#share-dialog'].forEach(selector => $(selector).addEventListener('close',() => queueMicrotask(flushCloud)));
 function closeEditors() {
-  ['#roll-dialog','#consume-dialog','#backup-dialog','#confirm-dialog'].forEach(selector => { if ($(selector).open) $(selector).close(); });
+  ['#roll-dialog','#consume-dialog','#backup-dialog','#confirm-dialog','#share-dialog'].forEach(selector => { if ($(selector).open) $(selector).close(); });
   pendingImport = null; $('#import-preview').hidden = true;
 }
 async function connectUser(user) {
@@ -481,3 +481,45 @@ try {
     ensureCloud().catch(error => { cloudConnecting = true; $('#sync-error').textContent = syncError(error); $('#sync-status').textContent = 'Cloud konnte nicht geladen werden. Bitte neu laden oder lokal fortfahren.'; renderStorageStatus(); });
   }
 } catch { /* Local storage errors are already shown in the recovery panel. */ }
+
+function renderSharing() {
+  const ready = !!(cloudUser && cloudReady && !cloudConnecting);
+  const enabled = ready && !!cloudRepository.shareId;
+  const locked = busy || !!pendingCloud || cloudWatchFailed || !navigator.onLine;
+  $('#share-login-needed').hidden = ready;
+  $('#share-controls').hidden = !ready;
+  $('#share-enable').hidden = enabled; $('#share-enable').disabled = locked;
+  $('#share-link-panel').hidden = !enabled;
+  $('#share-disable').disabled = locked;
+  $('#share-copy').disabled = locked; $('#share-visit').hidden = locked;
+  $('#share-status').textContent = !ready ? 'Zum Teilen zuerst deinen Cloud-Bestand über Sync verbinden.' : pendingCloud || cloudWatchFailed ? 'Bitte zuerst den aktuellen Cloud-Stand laden.' : enabled ? 'Leselink aktiv · gespeicherte Änderungen erscheinen automatisch.' : 'Dein Bestand ist noch nicht freigegeben.';
+  const url = new URL('./share.html',location.href);
+  if (enabled) url.hash = cloudRepository.shareId;
+  $('#share-url').value = enabled ? url.href : '';
+  $('#share-visit').href = enabled ? url.href : '#';
+}
+$('#share-open').addEventListener('click',() => { $('#share-error').textContent = ''; renderSharing(); $('#share-dialog').showModal(); });
+$('#share-go-sync').addEventListener('click',() => { $('#share-dialog').close(); $('#sync-open').click(); });
+async function changeSharing(enabled) {
+  if (busy || !cloudReady) return;
+  $('#share-error').textContent = '';
+  if (!enabled && !await ask('Freigabe deaktivieren?','Der bisherige Leselink funktioniert danach nicht mehr. Dein privater Bestand bleibt erhalten.','Freigabe deaktivieren')) return;
+  try {
+    assertWritable(); busy = true; renderSharing();
+    const target = cloudRepository, epoch = authEpoch;
+    const next = await target.setSharing(enabled);
+    if (epoch !== authEpoch || repository !== target) return;
+    state = next; render();
+    toast(enabled ? 'Leselink erstellt. Du kannst ihn jetzt kopieren.' : 'Freigabe deaktiviert.');
+  } catch (error) { $('#share-error').textContent = syncError(error); }
+  finally { busy = false; flushCloud(); renderSharing(); }
+}
+$('#share-enable').addEventListener('click',() => changeSharing(true));
+$('#share-disable').addEventListener('click',() => changeSharing(false));
+$('#share-copy').addEventListener('click',async () => {
+  const url = $('#share-url').value; if (!url) return;
+  try { await navigator.clipboard.writeText(url); toast('Leselink kopiert.'); }
+  catch { $('#share-url').focus(); $('#share-url').select(); $('#share-error').textContent = 'Automatisches Kopieren ist hier nicht verfügbar. Der Link ist markiert – bitte manuell kopieren.'; }
+});
+window.addEventListener('online',renderSharing);
+window.addEventListener('offline',renderSharing);

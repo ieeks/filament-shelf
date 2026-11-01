@@ -1,28 +1,71 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function googleUser() {
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'google.com';
+    }
+    function token(id) { return id is string && id.matches('^[a-f0-9]{64}$'); }
+    function shelfPath() { return /databases/$(database)/documents/users/$(request.auth.uid)/shelf/inventory; }
+    function publicPath(id) { return /databases/$(database)/documents/shares/$(id)/public/inventory; }
     match /users/{userId}/shelf/inventory {
-      function owner() {
-        return request.auth != null
-          && request.auth.uid == userId
-          && request.auth.token.firebase.sign_in_provider == 'google.com';
-      }
+      function owner() { return googleUser() && request.auth.uid == userId; }
       function validSnapshot() {
         return request.resource.data.keys().hasAll(['format', 'revision', 'payload'])
-          && request.resource.data.keys().hasOnly(['format', 'revision', 'payload'])
+          && request.resource.data.keys().hasOnly(['format', 'revision', 'payload', 'shareId'])
           && request.resource.data.format == 1
-          && request.resource.data.revision is int
-          && request.resource.data.revision >= 0
+          && request.resource.data.revision is int && request.resource.data.revision >= 0
           && request.resource.data.payload is string
-          && request.resource.data.payload.size() > 0
-          && request.resource.data.payload.size() <= 900000;
+          && request.resource.data.payload.size() > 0 && request.resource.data.payload.size() <= 900000;
+      }
+      function coherentShare() {
+        let next = request.resource.data;
+        return !next.keys().hasAny(['shareId']) || (token(next.shareId)
+          && getAfter(/databases/$(database)/documents/shares/$(next.shareId)).data.owner == request.auth.uid
+          && getAfter(publicPath(next.shareId)).data.revision == next.revision);
+      }
+      function revokedPrevious() {
+        return !resource.data.keys().hasAny(['shareId'])
+          || (request.resource.data.keys().hasAny(['shareId']) && request.resource.data.shareId == resource.data.shareId)
+          || !existsAfter(publicPath(resource.data.shareId));
       }
       allow get: if owner();
-      allow create: if owner() && validSnapshot() && request.resource.data.revision == 0;
+      allow create: if owner() && validSnapshot() && request.resource.data.revision == 0
+        && !request.resource.data.keys().hasAny(['shareId']);
       allow update: if owner() && validSnapshot()
-        && request.resource.data.revision == resource.data.revision + 1;
-      // Empty inventories are normal snapshots. Clients never delete the cloud document.
+        && request.resource.data.revision == resource.data.revision + 1
+        && coherentShare() && revokedPrevious();
       allow delete, list: if false;
+    }
+    // Private ownership record: the public document contains no account ID.
+    // Retained after revocation, so another account cannot claim an old token.
+    match /shares/{shareId} {
+      allow get: if googleUser() && resource.data.owner == request.auth.uid;
+      allow create: if googleUser() && token(shareId)
+        && request.resource.data.keys().hasOnly(['owner'])
+        && request.resource.data.owner == request.auth.uid
+        && getAfter(shelfPath()).data.shareId == shareId;
+      allow update, delete, list: if false;
+      match /public/inventory {
+        function shareOwner() {
+          return googleUser()
+            && getAfter(/databases/$(database)/documents/shares/$(shareId)).data.owner == request.auth.uid;
+        }
+        function validPublic() {
+          let d = request.resource.data;
+          return d.keys().hasAll(['format', 'revision', 'updatedAt', 'rolls'])
+            && d.keys().hasOnly(['format', 'revision', 'updatedAt', 'rolls'])
+            && d.format == 1 && d.revision is int && d.revision >= 0
+            && d.updatedAt is string && d.rolls is list && d.rolls.size() <= 5000;
+        }
+        allow get: if token(shareId);
+        allow list: if false;
+        allow create, update: if shareOwner() && validPublic()
+          && getAfter(shelfPath()).data.shareId == shareId
+          && getAfter(shelfPath()).data.revision == request.resource.data.revision;
+        allow delete: if shareOwner() && (!getAfter(shelfPath()).data.keys().hasAny(['shareId'])
+          || getAfter(shelfPath()).data.shareId != shareId);
+      }
     }
   }
 }

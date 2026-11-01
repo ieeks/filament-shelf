@@ -1,10 +1,10 @@
-# Verification – Filament Shelf v1.2
+# Verification – Filament Shelf v1.3
 
 Date: 2026-11-01
 
 ## Automated tests
 
-`node --test tests/*.test.js` — **59 tests pass**, zero dependencies.
+`node --test tests/*.test.js` — **66 tests pass**, zero dependencies.
 
 Coverage:
 
@@ -57,10 +57,19 @@ The user created `ieeks/filament-shelf` and enabled GitHub Pages from `main` / r
 
 ## Firestore emulator verification (2026-11-01)
 
-`npm --prefix tests/firebase test` — **4 tests pass** with Java 21 and Firebase Tools 15.34.2. Uses only project `demo-filament-shelf` and local emulator port 8088, no production credentials.
+`npm --prefix tests/firebase test` — **7 tests pass** with Java 21 and Firebase Tools 15.34.2. Uses only project `demo-filament-shelf` and local emulator port 8088, no production credentials.
 
 - Owner Google account can read/create; other users, anonymous clients and password-provider accounts cannot access that shelf.
 - Revision reuse/skipping, extra fields, wrong types/formats, oversize writes, client deletion/listing and unrelated paths are denied.
 - The actual SDK transport and CloudRepository are tested together against Firestore: exactly one of two racing saves succeeds, with stock and wishlist committed as one snapshot.
 
 Cloud browser QA: the real CDN SDK loads, Sync opens with a working sign-in control, and the default local inventory remains at 16 roles / 16 kg. A disposable transport (not deployed) was used to test the first-use consent and two-tab UI conflict: an unsaved note stayed in its dialog and saving was blocked after the other tab changed stock. Real Google login, the production Firebase rules publication, device-to-device production sync, and physical iPhone Safari testing still require the owner's setup/login. No production account or test inventory was created by QA.
+
+## Sharing verification (2026-11-01)
+
+- Whitelist projection excludes IDs, account data, notes, prices, purchase dates, history, archived rolls and wishlist. Reader validation rejects invalid weights/colors and drops unknown fields.
+- Share tokens use 32 cryptographically random bytes; disabling and re-enabling creates a new token. Stale clients cannot re-enable a revoked link.
+- Real Firestore emulator: anonymous document read works, private stock/ownership reads and collection listing fail. Anonymous/foreign writes, deletion and known-token ownership hijacking fail.
+- Real transport: stock and public projection update atomically; private-only legacy saves cannot strand public data. Revocation deletes the readable document and anonymous snapshot listeners receive null. Re-enabling never reactivates the previous token.
+- Browser with disposable test transport: connected cloud stock, created a link, opened the login-free reader (16 rolls / 16 kg), searched 10301 (Pumpkin Orange), revoked access and observed the open reader clear. No production account or public inventory was created by QA.
+- Production setup still requires the owner to publish the updated Firestore rules and sign in. GitHub Pages deployment does not publish Firebase rules.

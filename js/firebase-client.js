@@ -1,4 +1,6 @@
 import { firebaseConfig } from './firebase-config.js';
+import { publicShelf, validShareId } from './sharing.js';
+import { decodeCloud } from './cloud-storage.js';
 
 // Loaded only when the user opens Sync or previously opted into cloud mode.
 // Pinned official browser modules: no npm, bundler, or build pipeline required.
@@ -36,6 +38,12 @@ export function firestoreTransport(dbSDK, db, uid) {
       return dbSDK.runTransaction(db, async tx => {
         const snapshot = await tx.get(ref);
         const next = change(snapshot.exists() ? snapshot.data() : null);
+        const previousId = snapshot.exists() ? snapshot.data().shareId : null;
+        if (next.shareId) {
+          if (next.shareId !== previousId) tx.set(dbSDK.doc(db, 'shares', next.shareId), { owner:uid });
+          tx.set(dbSDK.doc(db, 'shares', next.shareId, 'public', 'inventory'), publicShelf(decodeCloud(next)));
+        }
+        if (previousId && previousId !== next.shareId) tx.delete(dbSDK.doc(db, 'shares', previousId, 'public', 'inventory'));
         tx.set(ref, next);
       });
     },
@@ -46,4 +54,22 @@ export function firestoreTransport(dbSDK, db, uid) {
       }, error);
     }
   };
+}
+
+export async function createShareReader(shareId, callback, error) {
+  if (!validShareId(shareId)) throw new Error('Dieser Leselink ist ungültig oder unvollständig.');
+  // No Firebase Auth SDK, sign-in, local inventory, or seed import for readers.
+  const [appSDK, dbSDK] = await Promise.all([
+    import('https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js'),
+    import('https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js')
+  ]);
+  const app = appSDK.initializeApp(firebaseConfig);
+  return watchPublicShelf(dbSDK, dbSDK.getFirestore(app), shareId, callback, error);
+}
+export function watchPublicShelf(sdk, db, shareId, callback, error) {
+  if (!validShareId(shareId)) throw new Error('Ungültiger Leselink.');
+  return sdk.onSnapshot(sdk.doc(db, 'shares', shareId, 'public', 'inventory'), { includeMetadataChanges:true }, snapshot => {
+    if (snapshot.metadata.fromCache || snapshot.metadata.hasPendingWrites) return;
+    callback(snapshot.exists() ? snapshot.data() : null);
+  }, error);
 }
