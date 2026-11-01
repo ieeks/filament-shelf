@@ -79,3 +79,5 @@ Cloud browser QA: the real CDN SDK loads, Sync opens with a working sign-in cont
 The root is now the login-free reader for the owner-selected share. `edit.html` retains the full original editor and browser storage keys. Explicit `share.html#token` links remain separate and never fall back to the public default if invalid/revoked. The selector is static public configuration; no Firestore rules change or database mutation is part of this deployment.
 
 Browser verification for V1.4: the public root loaded the actual configured share without login (16 rolls / 16 kg). The editing link opened `edit.html`, retained 16 local rolls and exposed Sync. Existing 66 core/adapter tests passed; Firestore rules were unchanged. No production inventory was modified during verification.
+
+Live upgrade check exposed reuse of the pre-V1.4 reader module from browser cache. The public entry points and their public configuration import now use a V1.4.0 query version to force the updated routing code on previously visited browsers.

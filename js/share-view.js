@@ -1,6 +1,6 @@
 import { validatePublicShelf, validShareId } from './sharing.js';
 import { family } from './core.js';
-import { publicShareId } from './public-config.js';
+import { publicShareId } from './public-config.js?v=1.4.0';
 const $ = selector => document.querySelector(selector);
 const nf = new Intl.NumberFormat('de-AT',{maximumFractionDigits:2});
 const names = {new:'Neu',opened:'Angebrochen',empty:'Leer'};
