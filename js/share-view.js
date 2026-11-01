@@ -1,5 +1,6 @@
 import { validatePublicShelf, validShareId } from './sharing.js';
 import { family } from './core.js';
+import { publicShareId } from './public-config.js';
 const $ = selector => document.querySelector(selector);
 const nf = new Intl.NumberFormat('de-AT',{maximumFractionDigits:2});
 const names = {new:'Neu',opened:'Angebrochen',empty:'Leer'};
@@ -33,7 +34,9 @@ $('#reader-filters').addEventListener('click',event => {
   selected = b.dataset.family;
   document.querySelectorAll('[data-family]').forEach(n=>{n.classList.toggle('active',n===b);n.setAttribute('aria-pressed',String(n===b));}); render();
 });
-const shareId = location.hash.slice(1);
+// Explicit reader links never fall back to the default shelf: an invalid or
+// revoked link must not unexpectedly display a different inventory.
+const shareId = document.body.dataset.defaultShelf === 'true' ? publicShareId : location.hash.slice(1);
 if (!validShareId(shareId)) clear('Dieser Leselink ist ungültig oder unvollständig. Bitte den vollständigen Link vom Besitzer anfordern.');
 else {
   try {

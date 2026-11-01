@@ -58,3 +58,9 @@ Der Test startet ausschließlich den lokalen Emulator für `demo-filament-shelf`
 Geteilt werden nur Rollen im Regal: Material, Farbe/Farbcode, Farbwert, Gewicht, Spule/Refill und Status. Kaufdaten, Notizen, Verlauf, Archiv, Wunschliste und Kontodaten bleiben privat. Die Leseransicht aktualisiert sich bei gespeicherten Änderungen automatisch. Jeder mit dem Link kann ihn weitergeben; bereits betrachtete/gesicherte Inhalte können nicht rückwirkend gelöscht werden.
 
 Falls Leselink-Erstellung oder Bestandsänderungen mit aktiver Freigabe an `permission-denied` scheitern, zuerst prüfen, ob die **vollständigen aktuellen** Regeln in genau diesem Firebase-Projekt veröffentlicht wurden. Ein fehlgeschlagener geteilter Schreibvorgang ändert auch den privaten Bestand nicht teilweise.
+
+## Normale Website-Adresse
+
+Die normale Adresse öffnet jetzt direkt den öffentlichen Bestand. Zum Verbinden/Übernehmen/Bearbeiten zuerst **Mein Regal bearbeiten** wählen (oder `edit.html` öffnen). Firebase-Konfiguration und Regeln bleiben für diesen Schritt unverändert.
+
+Die Startseite verwendet den vom Besitzer angegebenen Leselink aus `js/public-config.js`. **Freigabe deaktivieren** blendet auch diesen öffentlichen Bestand aus. Nach dem Erstellen eines neuen Leselinks dessen Token in dieser Datei ersetzen und nach GitHub pushen, damit die normale Adresse den neuen Link verwendet.

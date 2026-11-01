@@ -2,7 +2,7 @@
 
 Ein leichtes, statisches Filament-Inventar für den Bambu Lab P2S Combo. HTML, CSS und Vanilla JavaScript, ohne eigenes Backend, Frameworks, npm-Abhängigkeiten zum Betrieb oder Build-Schritt. Optional synchronisiert Firebase den Bestand über dein Google-Konto. Die öffentliche Firebase-Web-Konfiguration enthält keine Admin-Zugangsdaten.
 
-## Version 1.3
+## Version 1.4
 
 - Widerrufbarer Leselink ohne Anmeldung für Freunde/Familie: nur Material, Farbe, Gewicht und Rollenstatus. Kaufdaten, Notizen, Kontodaten, Archiv und Wunschliste bleiben privat.
 - Optionale Cloud-Synchronisierung von Bestand und Wunschliste mit Google-Anmeldung, einmaliger Übernahme und Schutz vor konkurrierenden Änderungen. Einrichtung: [FIREBASE_SETUP.md](FIREBASE_SETUP.md).
@@ -18,6 +18,14 @@ Ein leichtes, statisches Filament-Inventar für den Bambu Lab P2S Combo. HTML, C
 - Wunschliste mit Farbcode-Erkennung, Menge, Notizen und Übernahme gekaufter Rollen ins Inventar.
 - Validierter JSON-Import mit Vorschau, Ergänzen/Ersetzen, Export und Rückkehr zum Stand vor dem letzten Import.
 
+## Öffentliche Startseite und Bearbeitung
+
+Die normale Adresse **https://manuel.tools/filament-shelf/** zeigt den vom Besitzer ausgewählten Cloud-Bestand ohne Anmeldung. `index.html` ist die öffentliche Leseransicht und legt keinen lokalen Ausgangsbestand an. Der dafür verwendete Freigabe-Identifier steht ausdrücklich öffentlich in `js/public-config.js`.
+
+**Mein Regal bearbeiten** öffnet `edit.html` mit der bisherigen Verwaltung, Anmeldung, Wunschliste und Backups. Vorhandene Browserdaten bleiben erhalten: Domain und localStorage-Schlüssel ändern sich nicht. Nur die angemeldete Person kann ihren eigenen Cloud-Bestand bearbeiten. Ein anderer Google-Login erhält keinen Schreibzugriff auf den öffentlichen Bestand des Besitzers.
+
+`share.html#…` unterstützt weiterhin einzelne Leselinks. Wird die konfigurierte Freigabe deaktiviert, verschwindet der Bestand auch von der normalen Startseite. Nach dem Erstellen eines neuen Leselinks muss `publicShareId` in `js/public-config.js` auf dessen neues Token aktualisiert und die Website erneut veröffentlicht werden. Ein ungültiger einzelner Leselink weicht niemals auf den öffentlichen Standardbestand aus. Für diese Änderung sind keine zusätzlichen Firebase-Regeln nötig.
+
 ## Sofort lokal starten
 
 Im Projektordner:
@@ -26,7 +34,7 @@ Im Projektordner:
 python3 -m http.server 8080
 ```
 
-Dann `http://localhost:8080` öffnen. Alternativ einen vorhandenen statischen HTTP-Server verwenden. `index.html` nicht per `file://` doppelklicken: ES-Module benötigen einen HTTP(S)-Server. Node wird nur für Tests und das optionale Katalog-Update verwendet, nicht zum Betrieb.
+Dann `http://localhost:8080` für die öffentliche Ansicht oder `http://localhost:8080/edit.html` für die Verwaltung öffnen. Alternativ einen vorhandenen statischen HTTP-Server verwenden. `index.html` nicht per `file://` doppelklicken: ES-Module benötigen einen HTTP(S)-Server. Node wird nur für Tests und das optionale Katalog-Update verwendet, nicht zum Betrieb.
 
 ## GitHub Pages
 
@@ -115,7 +123,9 @@ Schema `app: "filament-shelf"`, `version: 2`; maximal 5 MB, 5.000 Rollen und 5.0
 
 | Datei | Aufgabe |
 | --- | --- |
-| `index.html`, `styles.css` | Oberfläche, responsive Gestaltung, native Dialoge |
+| `index.html` | Öffentliche Startseite ohne Anmeldung |
+| `edit.html`, `styles.css` | Verwaltung, responsive Gestaltung, native Dialoge |
+| `js/public-config.js` | Öffentlich gewählte Freigabe für die Startseite |
 | `js/app.js` | Ereignisse, Formularlogik, sichere DOM-Ausgabe |
 | `js/core.js` | Reine Fachlogik, Katalog, Validierung, Import, Statistik |
 | `js/storage.js` | Asynchroner Repository-Adapter für localStorage |

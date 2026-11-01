@@ -1,4 +1,4 @@
-# Verification – Filament Shelf v1.3
+# Verification – Filament Shelf v1.4
 
 Date: 2026-11-01
 
@@ -73,3 +73,9 @@ Cloud browser QA: the real CDN SDK loads, Sync opens with a working sign-in cont
 - Real transport: stock and public projection update atomically; private-only legacy saves cannot strand public data. Revocation deletes the readable document and anonymous snapshot listeners receive null. Re-enabling never reactivates the previous token.
 - Browser with disposable test transport: connected cloud stock, created a link, opened the login-free reader (16 rolls / 16 kg), searched 10301 (Pumpkin Orange), revoked access and observed the open reader clear. No production account or public inventory was created by QA.
 - Production setup still requires the owner to publish the updated Firestore rules and sign in. GitHub Pages deployment does not publish Firebase rules.
+
+## Public landing page (2026-11-01)
+
+The root is now the login-free reader for the owner-selected share. `edit.html` retains the full original editor and browser storage keys. Explicit `share.html#token` links remain separate and never fall back to the public default if invalid/revoked. The selector is static public configuration; no Firestore rules change or database mutation is part of this deployment.
+
+Browser verification for V1.4: the public root loaded the actual configured share without login (16 rolls / 16 kg). The editing link opened `edit.html`, retained 16 local rolls and exposed Sync. Existing 66 core/adapter tests passed; Firestore rules were unchanged. No production inventory was modified during verification.
