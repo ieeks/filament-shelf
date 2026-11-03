@@ -81,3 +81,7 @@ The root is now the login-free reader for the owner-selected share. `edit.html` 
 Browser verification for V1.4: the public root loaded the actual configured share without login (16 rolls / 16 kg). The editing link opened `edit.html`, retained 16 local rolls and exposed Sync. Existing 66 core/adapter tests passed; Firestore rules were unchanged. No production inventory was modified during verification.
 
 Live upgrade check exposed reuse of the pre-V1.4 reader module from browser cache. The public entry points and their public configuration import now use a V1.4.0 query version to force the updated routing code on previously visited browsers.
+
+## Color-code readability (2026-11-03)
+
+Card codes were 9 px on desktop / 8 px below 760 px. They now use 14 px medium-weight mono text, dark ink and a pale background across inventory, wishlist and public cards. Material labels are 11 px with improved contrast; the row can wrap. Chromium checks at desktop and 390 px: all 16 card codes computed to 14 px; no card-meta or horizontal body overflow. Stylesheet query version updated on all three entry pages so existing browsers load the change. Visual-only CSS update; inventory and Firebase logic unchanged.
