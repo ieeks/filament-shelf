@@ -1,3 +1,4 @@
+import { mountLabelPrinting } from './labels.js?v=1.5.0';
 import { validatePublicShelf, validShareId } from './sharing.js';
 import { family } from './core.js';
 import { publicShareId } from './public-config.js?v=1.4.0';
@@ -5,6 +6,7 @@ const $ = selector => document.querySelector(selector);
 const nf = new Intl.NumberFormat('de-AT',{maximumFractionDigits:2});
 const names = {new:'Neu',opened:'Angebrochen',empty:'Leer'};
 let shelf = null, selected = 'all';
+mountLabelPrinting(() => shelf?.rolls || []);
 function el(tag, className, text) { const n = document.createElement(tag); if (className) n.className = className; if (text !== undefined) n.textContent = text; return n; }
 function clear(message) { shelf = null; $('#reader-grid').replaceChildren(); $('#reader-content').hidden = true; $('#reader-status').textContent = message; }
 function render() {

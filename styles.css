@@ -13,3 +13,12 @@
 .share-body{display:grid;gap:14px}.share-body label{display:grid;gap:8px}.share-body input{width:100%;font:12px var(--mono)}#share-link-panel{display:grid;gap:16px}.reader-badge{background:var(--green-light);color:var(--green);padding:8px 14px;border-radius:99px;font-size:13px}.reader-metrics{grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:24px}#reader-status{margin-bottom:24px}#reader-grid{margin-top:24px}#share-visit{text-decoration:none;display:inline-flex;align-items:center;justify-content:center}@media(max-width:600px){.share-body .backup-actions{flex-direction:column}.share-body .button{width:100%}}
 
 .editor-link{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+
+.labels-actions{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+#labels-list{max-height:32vh;overflow:auto;border:1px solid var(--line);border-radius:10px}
+#labels-dialog .label-choice{display:flex;flex-direction:row;align-items:center;gap:12px;padding:12px;min-height:44px;border-bottom:1px solid var(--line);cursor:pointer}
+#labels-dialog .label-choice:last-child{border-bottom:0}
+#labels-dialog .label-choice input{width:20px;height:20px;flex:none;accent-color:var(--green)}
+#labels-dialog .label-choice span{overflow-wrap:anywhere;min-width:0}
+#labels-count{margin-top:12px}
+#labels-dialog .form-grid{margin-top:18px}

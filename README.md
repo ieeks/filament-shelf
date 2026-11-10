@@ -189,3 +189,13 @@ Die private Cloud-Hülle enthält optional `shareId`. Der Firestore-Transport sc
 Die Regeln verbieten das Auflisten von Freigaben und privaten Daten, erlauben den Dokument-Lesezugriff per Token und beschränken alle Schreibzugriffe auf den Besitzer. Regeln erzwingen bei aktivierter Freigabe passende Revisionen von privatem und öffentlichem Bestand; beim Entfernen/Wechseln des Tokens muss die alte öffentliche Kopie in derselben Transaktion gelöscht werden. Alte App-Versionen können dadurch keine veraltete öffentliche Kopie stehen lassen. Wenn ein Freigabe-Schreibvorgang fehlschlägt, bleibt auch der private Bestand unverändert.
 
 Die Leseransicht lädt keine Firebase-Auth-Bibliothek, legt keinen Ausgangsbestand an und speichert keine lokale Inventarkopie. Bei ungültigem oder widerrufenem Link zeigt sie einen Hinweis. `noindex` und `no-referrer` sind gesetzt; der Link bleibt trotzdem eine Zugangsberechtigung für jeden, der ihn kennt.
+
+### Farbmuster-Etiketten drucken
+
+**Etiketten drucken** ist auf der öffentlichen Startseite, Leselinks und in der Verwaltung verfügbar. Es liest den dort geladenen Bestand; Bestandsdaten werden beim Drucken nicht verändert.
+
+1. Farben suchen und auswählen oder alle Treffer markieren. Mehrere Rollen derselben Material-/Farbvariante erscheinen einmal. Archivierte und leere Rollen sind ausgeschlossen.
+2. Exemplare je Farbe (1–20) und Ausgabe wählen: **A4-Bogen** zum Ausschneiden aus vollflächigem Klebepapier oder **Einzeletikett** mit einer Seite je 18 × 12-mm-Etikett.
+3. Druckvorschau öffnen, dann drucken oder über den Browser als PDF speichern. Bei 100 % / tatsächlicher Größe und ohne Browser-Kopf-/Fußzeilen drucken.
+
+Die Vorschau öffnet einen neuen Tab. Bei blockierten Pop-ups erscheint ein Hinweis. A4 ist kein Layout für vorgestanzte Etikettenbögen. Einzeletiketten benötigen Unterstützung für das kleine Papierformat im Druckertreiber bzw. PDF-Import in die Geräte-App; eine direkte Bluetooth-Verbindung wird nicht hergestellt. Auf iPhone/iPad lässt sich auch die Systemfunktion Teilen → Drucken verwenden. Ein Testdruck prüft die tatsächlichen Maße; physischer Druck und iOS-Druckertreiber sind nicht automatisiert getestet.

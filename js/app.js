@@ -1,3 +1,4 @@
+import { mountLabelPrinting } from './labels.js?v=1.5.0';
 import { catalogData } from './catalog-data.js';
 import { normalizeCatalog, findByCode, normalizeHex, createRoll, validateRoll, createState, consume, stats, family, colorFamily, parseImport, planImport, now, round, MAX_IMPORT_BYTES, createWish, validateWish, purchaseWish } from './core.js';
 import { createSeed, seedCatalog } from './seed.js';
@@ -17,6 +18,7 @@ let localRepository, cloudClient, cloudLoading, cloudRepository, cloudUser = nul
 let cloudReady = false, cloudConnecting = false, pendingCloud = null, cloudWatchFailed = false;
 let migrationState = null, migrationRaw = null;
 let activeView = 'inventory', formMode = 'stock', purchaseId = null;
+mountLabelPrinting(() => state?.rolls || []);
 function el(tag, className, text) { const node = document.createElement(tag); if (className) node.className = className; if (text !== undefined) node.textContent = text; return node; }
 function button(label, className, action) { const node = el('button', className, label); node.type = 'button'; node.addEventListener('click', action); return node; }
 function background(colors) { return colors.length === 1 ? colors[0] : `linear-gradient(125deg, ${colors.join(',')})`; }
