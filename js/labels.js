@@ -20,8 +20,8 @@ export function printDocument(labels, mode = 'a4') {
 nav{padding:20px;max-width:800px;margin:auto;font-size:14px;line-height:1.6}button{padding:12px 18px;border:0;border-radius:8px;background:#285c40;color:white;font-size:16px;cursor:pointer}
 .sheet{background:white;margin:16px auto;break-after:page;page-break-after:always}
 .sheet:last-child{break-after:auto;page-break-after:auto}
-.label{width:18mm;height:12mm;padding:1mm;border:.2mm solid #bbb;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1.15;overflow:hidden;break-inside:avoid;font-size:6pt}
-.label>*{display:block;max-width:100%;overflow-wrap:anywhere}.label span{margin:.5mm 0}.label strong{font-size:7pt}
+.label{width:18mm;height:12mm;padding:1mm;border:.2mm solid #bbb;display:flex;flex-direction:column;align-items:stretch;justify-content:center;text-align:left;line-height:1.15;overflow:hidden;break-inside:avoid;font-size:6pt}
+.label>*{display:block;max-width:100%;overflow-wrap:anywhere}.label span{margin:.5mm 0}.label b{font-size:1.15em}.label strong{font-size:1em;font-weight:400}
 ${mode === 'a4' ? '.sheet{width:180mm;height:257mm;display:grid;grid-template-columns:repeat(8,18mm);grid-auto-rows:12mm;gap:4mm;align-content:start;padding-top:2mm}' : '.sheet{width:18mm;height:12mm}.label{border:0}'}
 @page{size:${mode === 'a4' ? 'A4 portrait;margin:20mm 15mm' : '18mm 12mm;margin:0'}}
 @media print{body{background:white}nav{display:none}.sheet{margin:0;box-shadow:none}}

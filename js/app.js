@@ -1,4 +1,4 @@
-import { mountLabelPrinting } from './labels.js?v=1.5.0';
+import { mountLabelPrinting } from './labels.js?v=1.5.1';
 import { catalogData } from './catalog-data.js';
 import { normalizeCatalog, findByCode, normalizeHex, createRoll, validateRoll, createState, consume, stats, family, colorFamily, parseImport, planImport, now, round, MAX_IMPORT_BYTES, createWish, validateWish, purchaseWish } from './core.js';
 import { createSeed, seedCatalog } from './seed.js';
