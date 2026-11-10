@@ -1,4 +1,4 @@
-import { mountLabelPrinting } from './labels.js?v=1.5.1';
+import { mountLabelPrinting } from './labels.js?v=1.5.2';
 import { validatePublicShelf, validShareId } from './sharing.js';
 import { family } from './core.js';
 import { publicShareId } from './public-config.js?v=1.4.0';

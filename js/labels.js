@@ -14,15 +14,15 @@ export function printDocument(labels, mode = 'a4') {
   const card = r => `<article class="label"><b>${escape(r.material)}</b><span>${escape(r.colorName)}</span><strong>${escape(r.colorCode)}</strong></article>`;
   const pages = [];
   if (mode === 'single') for (const r of labels) pages.push(`<section class="sheet">${card(r)}</section>`);
-  else for (let i=0;i<labels.length;i+=112) pages.push(`<section class="sheet">${labels.slice(i,i+112).map(card).join('')}</section>`);
+  else for (let i=0;i<labels.length;i+=49) pages.push(`<section class="sheet"><header class="paper-header"><h1>FILAMENT SHELF</h1><p>Farbmuster-Etiketten | 18 × 12 mm | A4</p><p>100 % / Tatsächliche Größe drucken. Keine Seitenanpassung.</p><small>Für vollflächiges Klebepapier; entlang der grauen Linien ausschneiden.<br>Auf die Rückseite unterhalb der Öse kleben.</small></header><div class="label-grid">${labels.slice(i,i+49).map(card).join('')}</div><footer class="paper-footer"><b>Größenkontrolle nach dem Drucken</b><div class="ruler"></div><p>Diese Strecke muss genau 50 mm lang sein.</p></footer></section>`);
   return `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Filament Shelf - Etiketten</title><style>
 *{box-sizing:border-box}body{margin:0;background:#edf0e9;font-family:Arial,sans-serif;color:#111}
 nav{padding:20px;max-width:800px;margin:auto;font-size:14px;line-height:1.6}button{padding:12px 18px;border:0;border-radius:8px;background:#285c40;color:white;font-size:16px;cursor:pointer}
 .sheet{background:white;margin:16px auto;break-after:page;page-break-after:always}
 .sheet:last-child{break-after:auto;page-break-after:auto}
-.label{width:18mm;height:12mm;padding:1mm;border:.2mm solid #bbb;display:flex;flex-direction:column;align-items:stretch;justify-content:center;text-align:left;line-height:1.15;overflow:hidden;break-inside:avoid;font-size:6pt}
-.label>*{display:block;max-width:100%;overflow-wrap:anywhere}.label span{margin:.5mm 0}.label b{font-size:1.15em}.label strong{font-size:1em;font-weight:400}
-${mode === 'a4' ? '.sheet{width:180mm;height:257mm;display:grid;grid-template-columns:repeat(8,18mm);grid-auto-rows:12mm;gap:4mm;align-content:start;padding-top:2mm}' : '.sheet{width:18mm;height:12mm}.label{border:0}'}
+.label{width:18mm;height:12mm;padding:1mm;border:.1mm solid #aaa;display:flex;flex-direction:column;align-items:stretch;justify-content:center;text-align:left;line-height:1.15;overflow:hidden;break-inside:avoid;font-size:5.6pt}
+.label>*{display:block;max-width:100%;overflow-wrap:anywhere}.label span{margin:.5mm 0}.label b{font-size:6.5pt}.label strong{font-size:1em;font-weight:400}
+${mode === 'a4' ? '.sheet{width:180mm;min-height:257mm;padding-top:0}.label-grid{display:grid;grid-template-columns:repeat(7,18mm);grid-auto-rows:12mm;column-gap:8mm;row-gap:9mm}.paper-header{height:44mm;font-size:9pt;line-height:1.5}.paper-header h1{font-size:18pt;margin:0 0 3mm}.paper-header p{margin:2mm 0}.paper-footer{margin-top:18mm;font-size:8pt;break-inside:avoid}.ruler{width:50mm;height:4mm;border-left:.2mm solid;border-right:.2mm solid;background:linear-gradient(black,black) center/100% .2mm no-repeat;margin-top:4mm}' : '.sheet{width:18mm;height:12mm}.label{border:0}'}
 @page{size:${mode === 'a4' ? 'A4 portrait;margin:20mm 15mm' : '18mm 12mm;margin:0'}}
 @media print{body{background:white}nav{display:none}.sheet{margin:0;box-shadow:none}}
 @media screen{main{overflow-x:auto;padding:0 12px 20px}.sheet{box-shadow:0 2px 14px #0002}}
