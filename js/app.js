@@ -72,10 +72,11 @@ function render() {
 }
 function filteredRolls() {
   const query = $('#search').value.trim().toLocaleLowerCase('de');
+  const kind = $('#kind-filter').value;
   const type = $('#subtype').value, color = $('#color-filter').value, status = $('#status-filter').value;
   const result = state.rolls.filter(r => {
     const translated = catalog.find(c => c.colorCode === r.colorCode && c.material === r.material)?.colorNameDE || '';
-    return (selectedFamily === 'all' || family(r.material) === selectedFamily) && (type === 'all' || r.material === type) && (color === 'all' || r.colors.some(c => colorFamily(c) === color)) && (!query || `${r.colorName} ${translated} ${r.colorCode} ${r.material}`.toLocaleLowerCase('de').includes(query)) && (status === 'archive' ? r.archived : !r.archived && (status === 'all' || status === 'active' && r.status !== 'empty' || status === r.status));
+    return (kind === 'all' || r.kind === kind) && (selectedFamily === 'all' || family(r.material) === selectedFamily) && (type === 'all' || r.material === type) && (color === 'all' || r.colors.some(c => colorFamily(c) === color)) && (!query || `${r.colorName} ${translated} ${r.colorCode} ${r.material}`.toLocaleLowerCase('de').includes(query)) && (status === 'archive' ? r.archived : !r.archived && (status === 'all' || status === 'active' && r.status !== 'empty' || status === r.status));
   });
   switch ($('#sort').value) {
     case 'color': result.sort((a,b) => a.colorName.localeCompare(b.colorName)); break;
@@ -164,10 +165,10 @@ function renderStats(s) {
   $('#history').replaceChildren(...usage.map(u => { const row = el('div','history-item'), details = el('div','',`${u.colorName} · ${u.code}`); details.append(el('span','',`${new Date(u.date).toLocaleDateString('de-AT')} · ${u.note || 'Verbrauch erfasst'}`)); row.append(details,el('strong','',`− ${g(u.grams)}`)); return row; }));
   if (!usage.length) $('#history').append(el('p','hint','Noch kein Verbrauch erfasst. Dein nächstes Projekt macht den Anfang.'));
 }
-function resetFilters() { selectedFamily = 'all'; $('#search').value = ''; ['#subtype','#color-filter'].forEach(s => $(s).value = 'all'); $('#status-filter').value = 'active'; $('#sort').value = 'added'; renderFamily(); render(); }
+function resetFilters() { selectedFamily = 'all'; $('#search').value = ''; ['#subtype','#color-filter','#kind-filter'].forEach(s => $(s).value = 'all'); $('#status-filter').value = 'active'; $('#sort').value = 'added'; renderFamily(); render(); }
 function renderFamily() { $$('#family-filter button').forEach(b => { b.classList.toggle('active',b.dataset.family === selectedFamily); b.setAttribute('aria-pressed',String(b.dataset.family === selectedFamily)); }); }
 $('#family-filter').addEventListener('click',event => { const b = event.target.closest('[data-family]'); if (!b) return; selectedFamily = b.dataset.family; $('#subtype').value = 'all'; renderFamily(); render(); });
-['#search','#subtype','#color-filter','#status-filter','#sort'].forEach(s => $(s).addEventListener(s === '#search' ? 'input' : 'change',renderGrid));
+['#search','#subtype','#color-filter','#kind-filter','#status-filter','#sort'].forEach(s => $(s).addEventListener(s === '#search' ? 'input' : 'change',renderGrid));
 $('#clear-filters').addEventListener('click',resetFilters);
 function view(name) { activeView = name; $('#add-open').textContent = name === 'wishlist' ? '＋ Wunsch hinzufügen' : '＋ Filament hinzufügen'; $('#quick-title').textContent = name === 'wishlist' ? 'Neue Farbe auf der Wunschliste?' : 'Neue Farbe im Regal?'; ['inventory','wishlist','stats'].forEach(key => { $(`#${key}-panel`).hidden = key !== name; $(`#${key}-tab`).classList.toggle('active',key === name); $(`#${key}-tab`).setAttribute('aria-pressed',String(key === name)); }); }
 $('#inventory-tab').addEventListener('click',() => view('inventory'));

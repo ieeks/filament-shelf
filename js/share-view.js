@@ -15,7 +15,8 @@ function render() {
   $('#reader-count').textContent = shelf.rolls.length;
   $('#reader-weight').textContent = `${nf.format(shelf.rolls.reduce((sum,r)=>sum+r.remainingWeight,0)/1000)} kg`;
   const query = $('#reader-search').value.trim().toLocaleLowerCase('de');
-  const rolls = shelf.rolls.filter(r => (selected === 'all' || family(r.material) === selected) && `${r.material} ${r.colorName} ${r.colorCode}`.toLocaleLowerCase('de').includes(query));
+  const kind = $('#kind-filter').value;
+  const rolls = shelf.rolls.filter(r => (kind === 'all' || r.kind === kind) && (selected === 'all' || family(r.material) === selected) && `${r.material} ${r.colorName} ${r.colorCode}`.toLocaleLowerCase('de').includes(query));
   $('#reader-empty').hidden = !!rolls.length;
   $('#reader-grid').replaceChildren(...rolls.map(r => {
     const card = el('article','card'), stage = el('div','color-stage');
@@ -30,6 +31,7 @@ function render() {
   }));
 }
 $('#reader-skip').addEventListener('click',event => { event.preventDefault(); $('#main').focus(); $('#main').scrollIntoView(); });
+$('#kind-filter').addEventListener('change',render);
 $('#reader-search').addEventListener('input',render);
 $('#reader-filters').addEventListener('click',event => {
   const b = event.target.closest('[data-family]'); if (!b) return;
